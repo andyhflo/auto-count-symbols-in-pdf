@@ -7,6 +7,15 @@
   },
   "devDependencies": {
     "nw": "^0.51.0",
-    "nw-builder": "^3.5.7"
-  }
+    "nw-builder": "^3.5.7",
+    "express": "^4.17.1",
+    "path": "^0.12.7",
+    "pdf-poppler": "^0.2.1",
+    "pdfkit": "^0.11.0",
+    "potrace": "^2.1.8",
+    "svg-to-pdfkit": "^0.1.8",
+    "svg.js": "^2.7.1",
+    "svgdom": "^0.1.8"
+  },
+  "dependencies": {}
 }
