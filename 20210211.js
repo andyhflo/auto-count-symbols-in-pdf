@@ -3,10 +3,8 @@ var c = fs.readFileSync('src/web/W-1.svg', 'utf8');
 var head = c.indexOf('<path d="') + 11;
 var tail = c.indexOf('" stroke') - head;
 
-
-
 var p = c.substr(head, tail).split(" M ");
-
+var threshold = 1
 var minX;
 var maxX;
 var minY;
@@ -55,26 +53,57 @@ for (var i = 0; i < p.length; i++) {
             isX = !isX;
 
         }
-        else{
+        else {
             newPath += m[k] + " "
         }
 
     }
-    path = [Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5), maxX - minX, maxY - minY, midX, midY, newPath]
+    path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, newPath, maxX - minX, maxY - minY, midX, midY]
     paths.push(path);
 }
-paths.sort((function(index){
-    return function(a, b){
-        return (a[index] === b[index] ? 0 : (a[index] < b[index] ? -1 : 1));
-    };
-})(0));
-var newSVG = c.substr(0, head-11) + '<g fill="none" stroke="none">';
-for (var l = 0; l < paths.length; l++) {
-    newSVG += '<path id="'+ l +'" d="' + paths[l][5] + '"/>'
+paths.sort(function (a, b) {
+    if (a[0] > b[0]) return 1
+    if (a[0] < b[0]) return -1
+    if (a[1] > b[1]) {
+        return 1
+    }
+    if (a[1] < b[1]) {
+        return -1
+    }
+    return 0
+});
+var newSVG = c.substr(0, head - 11) + '<g fill="none" stroke="none"><path id="0" d="' + paths[0][1] + '"/>';
+var refs = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '"/>'
+//var sheet = ""
+var repeats = 0;
+var lookBack = paths[0][1].split(/[\s,]+/)
+var differences;
+for (var l = 1; l < paths.length; l++) {
+    var next = paths[l][1].split(/[\s,]+/)
+    differences = threshold
+    if (lookBack.length = next.length) {
+        differences = 0
+        for (var m = 0; m < next.length; m++) {
+            if (lookBack[m] !== next[m]) {
+                if (isNaN(lookBack[m]) || isNaN(next[m])) {
+                    differences = threshold
+                    break
+                }
+                differences += Math.pow(lookBack[m] - next[m], 2)
+            }
+            if (differences >= threshold) break
+        }
+    }
+    if (differences >= threshold) {
+        newSVG += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>'
+        lookBack = next
+    } else {
+        repeats++
+    }
+    refs += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '"/>'
+    //   sheet += (l - repeats)+ ',' + paths[l][1] + ',' + paths[l][4] + ',' + paths[l][5] + "\r\n"
 }
 newSVG += '</g><g fill="none" stroke="black">'
-for (var m = 0; m < paths.length; m++) {
-    newSVG += '<use href="#' + m + '" x="' + paths[m][3] + '" y="' + paths[m][4] + '"/>'
-}
-newSVG += '</g></svg>'
-fs.writeFileSync('src/web/W-1rev.svg', newSVG)
+refs += '</g></svg>'
+fs.writeFileSync('src/web/W-1rev.svg', newSVG + refs)
+// fs.writeFileSync('src/web/W-1rev.csv', sheet)
