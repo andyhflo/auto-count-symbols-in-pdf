@@ -25,8 +25,11 @@
 
 // var potrace = require('potrace')
 // var fs = require('fs');
-
-// potrace.trace('src/web/W-1.png', function (err, svg) {
+//         var params = {
+//             alphaMax: 0, // don't make any curves, just straight line segments
+//             threshold: 120
+//         };
+// potrace.trace('src/web/W-1.png', params, function (err, svg) {
 //     if (err) throw err;
 //     fs.writeFileSync('src/web/W-1.svg', svg);
 // });

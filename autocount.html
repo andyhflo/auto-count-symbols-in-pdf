@@ -1,0 +1,119 @@
+<!doctype html>
+
+<head>
+    <title>Auto Count Symbols in a PDF</title>
+    <style>
+        html,
+        body,
+        #drop-area {
+            height: 100%;
+            margin: 0;
+        }
+
+        .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 5vw;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="drop-area">
+
+        <div class="center">
+            <P style="page-break-before: always"></P>
+            <p style="text-align:center">Drag a drawing file here</p>
+        </div>
+
+    </div>
+    <script>
+        let dropArea = document.getElementById("drop-area")
+            ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false)
+                document.body.addEventListener(eventName, preventDefaults, false)
+            })
+        dropArea.addEventListener('drop', handleDrop, false)
+
+        function preventDefaults(e) {
+            e.preventDefault()
+            e.stopPropagation()
+        }
+
+        function handleDrop(e) {
+            var dt = e.dataTransfer
+            var files = dt.files
+
+            handleFiles(files)
+        }
+
+        function handleFiles(files) {
+            files = [...files]
+            files.forEach(loadFile)
+        }
+
+        function loadFile(file) {
+            if (file.type == "application/pdf") {
+                console.log(file.name)
+
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var contents = e.target.result;
+                    displayContents(contents);
+                };
+                reader.readAsText(file);
+
+                function readSingleFile(e) {
+                    var file = e.target.files[0];
+                    if (!file) {
+                        return;
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var contents = e.target.result;
+                        displayContents(contents);
+                    };
+                    reader.readAsText(file);
+                }
+
+                function displayContents(contents) {
+                    var element = document.getElementById('drop-area');
+                    element.textContent = contents;
+                }
+            }
+            else {
+                console.log(file.name + " is not a PDF")
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var contents = e.target.result;
+                    displayContents(contents);
+                };
+                reader.readAsText(file);
+
+                function readSingleFile(e) {
+                    var file = e.target.files[0];
+                    if (!file) {
+                        return;
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var contents = e.target.result;
+                        displayContents(contents);
+                    };
+                    reader.readAsText(file);
+                }
+
+                function displayContents(contents) {
+                    var element = document.getElementById('drop-area');
+                    element.innerHTML = contents;
+                }
+
+            }
+        }
+    </script>
+</body>
+
+</html>

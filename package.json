@@ -6,9 +6,10 @@
     "prod": "nwbuild --buildDir dist/ src/"
   },
   "devDependencies": {
+    "canvas": "^2.6.1",
+    "express": "^4.17.1",
     "nw": "^0.51.0",
     "nw-builder": "^3.5.7",
-    "express": "^4.17.1",
     "path": "^0.12.7",
     "pdf-poppler": "^0.2.1",
     "pdfkit": "^0.11.0",
