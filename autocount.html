@@ -4,45 +4,122 @@
     <title>Auto Count Symbols in a PDF</title>
     <style>
         html,
-        body,
-        #drop-area {
+        body {
             height: 100%;
             margin: 0;
         }
 
-        .center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        #drop-area {
             height: 100%;
-            font-size: 5vw;
+            margin: 0;
+            display: flex;
+        }
+
+
+        #counts {
+            position: fixed;
+            width: 20%;
+            height: 100%;
+            background-color: white;
+            text-align: left;
+            overflow-y: auto;
+            overflow-x: hidden;
+            direction: rtl;
+        }
+
+        #drawings {
+            flex-grow: 1;
+        }
+
+        .dragbar {
+            background-color: black;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 1%;
+            height: 100%;
+            width: .4vw;
+            cursor: col-resize;
+            opacity: .3;
+        }
+
+        #table {
+            display: inline-table;
+            border-collapse: collapse;
+            position: sticky;
+            overflow: auto;
+            direction: ltr;
+        }
+
+        .row {
+            display: table-row;
+            text-align: center;
+            border-bottom: 1px solid blue;
+            margin: 0;
+        }
+
+        .col {
+            display: table-cell;
+            text-align: center;
+            padding-left: 0.4vw;
+            padding-right: 0.4vw;
+            font-size: min(max(5px, 1.25vw), 24px);
+        }
+
+        input[type=text] {
+            font-size: min(max(4px, 1vw), 20px);
         }
     </style>
 </head>
 
 <body>
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <div id="drop-area">
-
-        <div class="center">
-            <P style="page-break-before: always"></P>
-            <p style="text-align:center">Drag a drawing file here</p>
+        <div id="counts">
+            <div id="table">
+                <div class="row">
+                    <div class="col">
+                        Description
+                    </div>
+                    <div class="col">
+                        Symbol
+                    </div>
+                    <div class="col">
+                        #
+                    </div>
+                </div>
+            </div>
+            <div class="dragbar"></div>
         </div>
-
+        <div id="drawings">
+        </div>
     </div>
     <script>
+        var dragging = false;
+        $('.dragbar').mousedown(function (e) {
+            e.preventDefault();
+            dragging = true;
+            var side = $('#counts');
+            $(document).mousemove(function (ex) {
+                side.css("width", ex.pageX + 2);
+            });
+        });
+        $(document).mouseup(function (e) {
+            if (dragging) {
+                $(document).unbind('mousemove');
+                dragging = false;
+            }
+        });
         let dropArea = document.getElementById("drop-area")
             ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropArea.addEventListener(eventName, preventDefaults, false)
                 document.body.addEventListener(eventName, preventDefaults, false)
             })
         dropArea.addEventListener('drop', handleDrop, false)
-
         function preventDefaults(e) {
             e.preventDefault()
             e.stopPropagation()
         }
-
         function handleDrop(e) {
             var dt = e.dataTransfer
             var files = dt.files
@@ -54,62 +131,187 @@
             files = [...files]
             files.forEach(loadFile)
         }
+        function trace(c) {
+            // potrace = require('potrace')
+            // var trace = new potrace.Potrace();
+            // trace.setParameters({
+            //     threshold: 120,
+            //     alphaMax: 0
+            // });
+
+            // var a = trace.loadImage(nextPage + '1.png', function (err) {
+            //     if (err) throw err;
+
+            //     trace.getSVG(); // returns SVG document contents
+            // });
+        }
+        function displayContents(c) {
+            var element = document.getElementById('table');
+            var head = c.indexOf('d="') + 5;
+            var tail = c.indexOf('"', head) - head;
+            var p = c.substr(head, tail).split(" M ");
+            var threshold = 1
+            var minX;
+            var maxX;
+            var minY;
+            var maxY;
+            var midX;
+            var midY;
+            var n;
+            var isX;
+            var paths = [];
+            var path = [];
+            var newPath;
+            for (var i = 0; i < p.length; i++) {
+                var m = p[i].split(/[\sL,]+/).filter(function (el) {
+                    return el != null;
+                });
+                minX = Infinity;
+                minY = Infinity;
+                maxX = 0;
+                maxY = 0;
+                isX = true;
+                for (var j = 0; j < m.length; j++) {
+                    n = parseFloat(m[j]);
+                    if (isX) {
+                        minX = Math.min(minX, n);
+                        maxX = Math.max(maxX, n);
+                    }
+                    else {
+                        minY = Math.min(minY, n);
+                        maxY = Math.max(maxY, n);
+                    }
+                    isX = !isX;
+                }
+                midX = Math.round(((minX + maxX) / 2) * 1000) / 1000;
+                midY = Math.round(((minY + maxY) / 2) * 1000) / 1000;
+                newPath = "M ";
+                for (var k = 0; k < m.length; k++) {
+                    if (isX) {
+                        n = Math.round((parseFloat(m[k]) - midX) * 1000) / 1000;
+                        newPath += n + " ";
+                    }
+                    else {
+                        n = Math.round((parseFloat(m[k]) - midY) * 1000) / 1000;
+                        newPath += n + " ";
+                    }
+                    isX = !isX;
+                }
+                path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, newPath, maxX - minX, maxY - minY, midX, midY]
+                paths.push(path);
+            }
+            paths.sort(function (a, b) {
+                if (a[0] > b[0]) return 1
+                if (a[0] < b[0]) return -1
+                if (a[1] > b[1]) {
+                    return 1
+                }
+                if (a[1] < b[1]) {
+                    return -1
+                }
+                return 0
+            });
+            var newSVG = c.substr(0, head - 11) + '<g fill="none" stroke="none"><path id="0" d="' + paths[0][1] + '"/>';
+            var refs = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '"/>'
+            var repeats = 0;
+            var quantity = 1;
+            var lookBack = paths[0][1].split(/[\s,]+/)
+            var differences;
+            for (var l = 1; l < paths.length; l++) {
+                var next = paths[l][1].split(/[\s,]+/)
+                differences = threshold
+                if (lookBack.length = next.length) {
+                    differences = 0
+                    for (var m = 0; m < next.length; m++) {
+                        if (lookBack[m] !== next[m]) {
+                            if (isNaN(lookBack[m]) || isNaN(next[m])) {
+                                differences = threshold
+                                break
+                            }
+                            differences += Math.pow(lookBack[m] - next[m], 2)
+                        }
+                        if (differences >= threshold) break
+                    }
+                }
+                if (differences >= threshold) {
+                    newSVG += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>'
+                    element.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-10 -10 20 20"  version="1.1"><path d="' + lookBack.toString().replace(/[L,]/g, " ") + '" fill="none" stroke="black"/></svg></div><div class="col">' + quantity + '</div></div>');
+                    lookBack = next
+                    quantity = 1;
+                } else {
+                    repeats++
+                    quantity++
+                }
+                refs += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '" class="path" fill="none" stroke="black"/>'
+            }
+            newSVG += '</g>'
+            refs += '</svg>'
+            var element = document.getElementById('drawings');
+            element.insertAdjacentHTML('beforeend', newSVG + refs + '<hr><p style="page-break-before"></p>');
+
+        }
 
         function loadFile(file) {
-            if (file.type == "application/pdf") {
-                console.log(file.name)
+            var c = file.type;
 
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    var contents = e.target.result;
-                    displayContents(contents);
-                };
-                reader.readAsText(file);
+            console.log("I just received " + file.name + " of type " + file.type)
+            switch (c) {
+                case "application/pdf":
+                    console.log(file.name)
 
-                function readSingleFile(e) {
-                    var file = e.target.files[0];
-                    if (!file) {
-                        return;
-                    }
+                    // use pdf-poppler to convert pdf to png
+
+                    const path = require("path");
+                    const pdf = require('pdf-poppler');
+
+                    let filen = 'src/web/W.pdf';
+                    console.log(path.dirname(filen))
+                    console.log(path.basename(filen, path.extname(filen)))
+
+                    // let opts = {
+                    //     format: 'png',
+                    //     scale: 4096,
+                    //     out_dir: path.dirname(file),
+                    //     out_prefix: path.basename(file, path.extname(file)),
+                    //     page: null
+                    // }
+
+                    // pdf.convert(file, opts)
+                    //     .then(res => {
+                    //         console.log('Successfully converted');
+                    //     })
+                    //     .catch(error => {
+                    //         console.error(error);
+                    //     })
+
+
+                    break;
+                case "image/svg+xml":
                     var reader = new FileReader();
                     reader.onload = function (e) {
                         var contents = e.target.result;
                         displayContents(contents);
                     };
                     reader.readAsText(file);
-                }
 
-                function displayContents(contents) {
-                    var element = document.getElementById('drop-area');
-                    element.textContent = contents;
-                }
-            }
-            else {
-                console.log(file.name + " is not a PDF")
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    var contents = e.target.result;
-                    displayContents(contents);
-                };
-                reader.readAsText(file);
-
-                function readSingleFile(e) {
-                    var file = e.target.files[0];
-                    if (!file) {
-                        return;
-                    }
+                    break;
+                case "image/png":
                     var reader = new FileReader();
                     reader.onload = function (e) {
                         var contents = e.target.result;
-                        displayContents(contents);
+                        trace(contents);
                     };
                     reader.readAsText(file);
-                }
-
-                function displayContents(contents) {
-                    var element = document.getElementById('drop-area');
-                    element.innerHTML = contents;
-                }
+                    break;
+                case "image/jpeg":
+                    console.log(file.name)
+                    break;
+                case "text/html":
+                    console.log(file.name)
+                    break;
+                default:
+                    console.log(file.name + " skipped (looking for files with specific extensions only)")
+                    break;
 
             }
         }
