@@ -1,0 +1,96 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+#drop-area {
+    height: 100%;
+    margin: 0;
+    display: flex;
+}
+
+#counts {
+    position: fixed;
+    width: 20%;
+    height: 100%;
+    background-color: white;
+    text-align: left;
+    overflow-y: auto;
+    overflow-x: hidden;
+    direction: rtl;
+    z-index: 2;
+    opacity: .8;
+}
+
+#drawings {
+    position: absolute;
+    flex-grow: 1;
+z-index: 1;
+
+}
+
+.page {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.svgDiv {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: .8;
+    margin: 0;
+}
+
+
+
+use:hover {
+    stroke: red;
+  }
+  
+.dragbar {
+    background-color: black;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 1%;
+    height: 100%;
+    width: .4vw;
+    cursor: col-resize;
+    opacity: .3;
+}
+
+#table {
+    display: inline-table;
+    border-collapse: collapse;
+    position: sticky;
+    overflow: auto;
+    direction: ltr;
+}
+
+.row {
+    display: table-row;
+    text-align: center;
+    border-bottom: 1px solid blue;
+    margin: 0;
+}
+
+.col {
+    display: table-cell;
+    text-align: center;
+    padding-left: 0.4vw;
+    padding-right: 0.4vw;
+    font-size: min(max(5px, 1.25vw), 24px);
+}
+
+input[type=text] {
+    font-size: min(max(4px, 1vw), 20px);
+}

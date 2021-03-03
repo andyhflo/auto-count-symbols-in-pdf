@@ -1,12 +1,15 @@
 {
-  "name": "viewer",
+  "name": "src",
   "version": "1.0.0",
   "description": "",
-  "main": "web/viewer.html",
+  "main": "/web/autocount.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "window": {
+    "title": "Auto Count"
   },
   "keywords": [],
   "author": "",
   "license": "ISC"
-  }
+}

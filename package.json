@@ -1,6 +1,6 @@
 {
-  "name": "viewer",
-  "main": "/src/web/viewer.html",
+  "name": "AutoCount",
+  "main": "/src/web/autocount.html",
   "scripts": {
     "dev": "nw src/",
     "prod": "nwbuild --buildDir dist/ src/"
