@@ -1,5 +1,5 @@
 {
-  "name": "AutoCount",
+  "name": "autocount",
   "main": "/src/web/autocount.html",
   "scripts": {
     "dev": "nw src/",
