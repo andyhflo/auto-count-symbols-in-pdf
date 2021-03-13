@@ -38,7 +38,7 @@ canvas {
     position: absolute;
     top: 0;
     left: 0;
-    opacity: 1;
+    opacity: .8;
 }
 
 .svgDiv {
@@ -50,8 +50,10 @@ canvas {
     opacity: 1;
 }
 
-use:hover {
+use:hover, path:hover {
     stroke: red;
+    stroke-width: 1;
+
   }
   
 #dragbar {

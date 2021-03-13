@@ -56,6 +56,7 @@ function preventDefaults(e) {
 }
 
 async function handleDrop(e) {
+    console.time('Execution Time');
     files = [...e.dataTransfer.files]
     var filesProcessed = 0;
     for (const file of files) {
@@ -72,11 +73,11 @@ async function handleDrop(e) {
                         for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
                             pdf.getPage(pageNumber).then(function (page) {
 
-                                var viewport = page.getViewport({ scale: 5 });
+                                var viewport = page.getViewport({ scale: 4 });
                                 var pageDiv = document.createElement('div');
                                 pageDiv.setAttribute("class", "page");
-                                pageDiv.style.height = viewport.height + "px";
-                                pageDiv.style.width = viewport.width + "px";
+                                pageDiv.style.height = viewport.height/4 + "px";
+                                pageDiv.style.width = viewport.width/4 + "px";
                                 canvasdiv.appendChild(pageDiv);
                                 var pageBreak = document.createElement('p');
                                 pageBreak.setAttribute("style", "page-break-before");
@@ -86,18 +87,22 @@ async function handleDrop(e) {
                                 svgDivs[OverallPageNumber].setAttribute("class", "svgDiv");
                                 pageDiv.appendChild(canvas);
                                 pageDiv.appendChild(svgDivs[OverallPageNumber]);
+                                
 
                                 // Prepare canvas using PDF page dimensions
                                 var context = canvas.getContext('2d');
                                 canvas.height = viewport.height;
                                 canvas.width = viewport.width;
+                                canvas.style.height = viewport.height/4 + "px";
+                                canvas.style.width = viewport.width/4 + "px";
+
 
                                 // Render PDF page into canvas context
                                 var renderContext = { canvasContext: context, viewport: viewport };
 
                                 var renderTask = page.render(renderContext);
                                 renderTask.promise.then(async function () {
-                                    await loadSVG(await outline(canvas.toDataURL('image/png')), OverallPageNumber);
+                                    await loadSVG(await outline(canvas.toDataURL('image/png')), this.OPN);
                                     pagesProcessed++;
 
                                     if (pagesProcessed === totalPages) {
@@ -106,7 +111,7 @@ async function handleDrop(e) {
                                     if (filesProcessed === files.length) {
                                         sort();
                                     }
-                                }.bind(OverallPageNumber));
+                                }.bind({OPN:OverallPageNumber}));
                                 OverallPageNumber++; 
                             }.bind(OverallPageNumber));
  
@@ -1066,12 +1071,12 @@ async function outline(c) {
         imgElement.src = c;
         process(function () {
 
-            resolve(getSVG(1));
+            resolve(getSVG(.25));
         });
     })
 }
 
-async function loadSVG(c, OverallPageNumber) {
+async function loadSVG(c, OverallPageNum) {
     return new Promise((resolve, reject) => {
         var head = c.indexOf('d="') + 5;
         var tail = c.indexOf('"', head) - head;
@@ -1124,11 +1129,11 @@ async function loadSVG(c, OverallPageNumber) {
                 }
                 isX = !isX;
             }
-            path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, newPath, maxX - minX, maxY - minY, midX, midY, OverallPageNumber, i]
+            path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, newPath, maxX - minX, maxY - minY, midX, midY, OverallPageNum, i]
             paths.push(path);
             console.log('pushed ' + i)
         }
-        resolve(c.substr(0, head - 11));
+        resolve();
     })
 }
 
@@ -1154,7 +1159,7 @@ function sort(head) {
     for (let p = 0; p< OverallPageNumber; p++){
         newSVG[p] = '<svg version="1.1" width="' + parseInt(svgDivs[p].parentNode.style.width) + '" height="' + parseInt(svgDivs[p].parentNode.style.height) + '" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="none"><path id="0" d="' + paths[0][1] + '"/>';
     }
-    refs[paths[0][6]] = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '" fill="none" stroke="black"/>';
+    refs[paths[0][6]] = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '" fill="none" stroke="green" stroke-width=".5"/>';
     var repeats = 0;
     var quantity = 1;
     var lookBack = paths[0][1].split(/[\s,]+/)
@@ -1179,7 +1184,7 @@ function sort(head) {
         if (differences > threshold) {
             newSVG[paths[l][6]] += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>'
             size = Math.round(Math.max(paths[l][2], paths[l][3]) + 1)
-            table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black"/></svg></div><div class="col">' + quantity + '</div></div>');
+            table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
             lookBack = next
             quantity = 1;
         } else {
@@ -1187,13 +1192,17 @@ function sort(head) {
             repeats++
             quantity++
         }
-        refs[paths[l][6]] += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '" fill="none" stroke="black"/>'
+        refs[paths[l][6]] += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '" fill="none" stroke="green" stroke-width=".5"/>'
     }
     size = Math.round(Math.max(paths[paths.length - 1][2], paths[paths.length - 1][3]) + 1)
-    table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black"/></svg></div><div class="col">' + quantity + '</div></div>');
+    table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
     sideBar.style.width = (table.offsetWidth + 5) + "px";
     for (let p = 0; p < OverallPageNumber; p++){
         newSVG[p] += '</g>';
+        while (svgDivs[p].firstChild) {
+            svgDivs[p].removeChild(svgDivs[p].firstChild);
+        }
         svgDivs[p].insertAdjacentHTML('beforeend', newSVG[p] + refs[p] + '</svg>');
     }
+    console.timeEnd('Execution Time');
 }
