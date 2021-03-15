@@ -3,24 +3,6 @@ if (typeof window !== "undefined" && window["pdfjs-dist/build/pdf"]) {
     pdfjsLib = window["pdfjs-dist/build/pdf"];
 } else {
     pdfjsLib = require("../build/pdf.js");
-    // const win = nw.Window.get();
-
-    // window.addEventListener("wheel", function (e) {
-    //     if (e.ctrlKey) {
-    //         if (e.deltaY > 0) {
-    //             win.zoomLevel -= 0.5
-    //         }
-    //         else {
-    //             win.zoomLevel += 0.5;
-    //         }
-    //         localStorage.zoomLevel = win.zoomLevel; // store zoom level to localStorage
-    //     }
-    // });
-
-    // // load zoom level from localStorage
-    // if (localStorage.zoomLevel) {
-    //     win.zoomLevel = parseFloat(localStorage.zoomLevel);
-    // }
 }
 var paths = [];
 var sideBar = document.getElementById('counts');
@@ -29,6 +11,7 @@ var table = document.getElementById('table');
 var canvasdiv = document.getElementById('drawings');
 var svgDivs = [];
 var OverallPageNumber = 0;
+const scale = 5;
 
 dragbar.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -72,12 +55,11 @@ async function handleDrop(e) {
                         var totalPages = pdf.numPages
                         for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
                             pdf.getPage(pageNumber).then(function (page) {
-
-                                var viewport = page.getViewport({ scale: 4 });
+                                var viewport = page.getViewport({ scale: scale });
                                 var pageDiv = document.createElement('div');
                                 pageDiv.setAttribute("class", "page");
-                                pageDiv.style.height = viewport.height/4 + "px";
-                                pageDiv.style.width = viewport.width/4 + "px";
+                                pageDiv.style.height = viewport.height / scale + "px";
+                                pageDiv.style.width = viewport.width / scale + "px";
                                 canvasdiv.appendChild(pageDiv);
                                 var pageBreak = document.createElement('p');
                                 pageBreak.setAttribute("style", "page-break-before");
@@ -87,34 +69,26 @@ async function handleDrop(e) {
                                 svgDivs[OverallPageNumber].setAttribute("class", "svgDiv");
                                 pageDiv.appendChild(canvas);
                                 pageDiv.appendChild(svgDivs[OverallPageNumber]);
-                                
-
-                                // Prepare canvas using PDF page dimensions
                                 var context = canvas.getContext('2d');
                                 canvas.height = viewport.height;
                                 canvas.width = viewport.width;
-                                canvas.style.height = viewport.height/4 + "px";
-                                canvas.style.width = viewport.width/4 + "px";
-
-
-                                // Render PDF page into canvas context
+                                canvas.style.height = viewport.height / scale + "px";
+                                canvas.style.width = viewport.width / scale + "px";
                                 var renderContext = { canvasContext: context, viewport: viewport };
-
                                 var renderTask = page.render(renderContext);
                                 renderTask.promise.then(async function () {
-                                    await loadSVG(await outline(canvas.toDataURL('image/png')), this.OPN);
+                                    await loadSVG(await outline(this.ctx, this.cvs), this.OPN);
                                     pagesProcessed++;
-
                                     if (pagesProcessed === totalPages) {
                                         filesProcessed++;
                                     }
                                     if (filesProcessed === files.length) {
                                         sort();
                                     }
-                                }.bind({OPN:OverallPageNumber}));
-                                OverallPageNumber++; 
+                                }.bind({ OPN: OverallPageNumber, ctx: context, cvs: canvas }));
+                                OverallPageNumber++;
                             }.bind(OverallPageNumber));
- 
+
                         }
                     }, function (reason) {
                         // PDF loading error
@@ -123,30 +97,6 @@ async function handleDrop(e) {
                 };
                 reader.readAsArrayBuffer(file);
                 break;
-            case "image/svg+xml":
-                console.log(file.name + " of type " + c + " skipped (looking for files with specific extensions only)")
-                // var reader = new FileReader();
-                // reader.onload = function (e) {
-                //     var contents = e.target.result;
-                //     loadSVG(contents);
-                // };
-                // reader.readAsText(file);
-                break;
-            case "image/png":
-                console.log(file.name + " of type " + c + " skipped (looking for files with specific extensions only)")
-                // var reader = new FileReader();
-                // reader.onload = function (e) {
-                //     var contents = e.target.result;
-                //     outline(contents);
-                // };
-                // reader.readAsText(file);
-                break;
-            case "image/jpeg":
-                console.log(file.name + " of type " + c + " skipped (looking for files with specific extensions only)")
-                break;
-            case "text/html":
-                console.log(file.name + " of type " + c + " skipped (looking for files with specific extensions only)")
-                break;
             default:
                 console.log(file.name + " of type " + c + " skipped (looking for files with specific extensions only)")
                 break;
@@ -154,7 +104,7 @@ async function handleDrop(e) {
     }
 }
 
-async function outline(c) {
+async function outline(ctx, cvs) {
     return new Promise((resolve, reject) => {
         function Point(x, y) {
             this.x = x;
@@ -223,9 +173,7 @@ async function outline(c) {
             this.beta = new Array(n);
         }
 
-        var imgElement = document.createElement("img"),
-            imgCanvas = document.createElement("canvas"),
-            bm = null,
+        var bm = null,
             pathlist = [],
             callback,
             info = {
@@ -233,40 +181,6 @@ async function outline(c) {
                 turnpolicy: "minority",
                 turdsize: 2
             };
-
-        imgElement.onload = function () {
-            loadCanvas();
-            loadBm();
-        };
-
-        function setParameter(obj) {
-            var key;
-            for (key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    info[key] = obj[key];
-                }
-            }
-        }
-
-        function loadCanvas() {
-            imgCanvas.width = imgElement.width;
-            imgCanvas.height = imgElement.height;
-            var ctx = imgCanvas.getContext('2d');
-            ctx.drawImage(imgElement, 0, 0);
-        }
-
-        function loadBm() {
-            var ctx = imgCanvas.getContext('2d');
-            bm = new Bitmap(imgCanvas.width, imgCanvas.height);
-            var imgdataobj = ctx.getImageData(0, 0, bm.w, bm.h);
-            var l = imgdataobj.data.length, i, j, color;
-            for (i = 0, j = 0; i < l; i += 4, j++) {
-                color = 0.2126 * imgdataobj.data[i] + 0.7153 * imgdataobj.data[i + 1] +
-                    0.0721 * imgdataobj.data[i + 2];
-                bm.data[j] = (color < 128 ? 1 : 0);
-            }
-            info.isReady = true;
-        }
 
         function bmToPathlist() {
             var bm1 = bm.copy(),
@@ -304,7 +218,6 @@ async function outline(c) {
                 var path = new Path(),
                     x = point.x, y = point.y,
                     dirx = 0, diry = 1, tmp;
-
                 path.sign = bm.at(point.x, point.y) ? "+" : "-";
 
                 while (1) {
@@ -318,17 +231,13 @@ async function outline(c) {
                     if (y < path.minY)
                         path.minY = y;
                     path.len++;
-
                     x += dirx;
                     y += diry;
                     path.area -= x * diry;
-
                     if (x === point.x && y === point.y)
                         break;
-
                     var l = bm1.at(x + (dirx + diry - 1) / 2, y + (diry - dirx - 1) / 2);
                     var r = bm1.at(x + (dirx - diry - 1) / 2, y + (diry + dirx - 1) / 2);
-
                     if (r && !l) {
                         if (info.turnpolicy === "right" ||
                             (info.turnpolicy === "black" && path.sign === '+') ||
@@ -363,7 +272,6 @@ async function outline(c) {
                 for (i = 1; i < len; i++) {
                     x = path.pt[i].x;
                     y = path.pt[i].y;
-
                     if (y !== y1) {
                         minY = y1 < y ? y1 : y;
                         maxX = path.maxX;
@@ -376,11 +284,8 @@ async function outline(c) {
             }
 
             while (currentPoint = findNext(currentPoint)) {
-
                 path = findPath(currentPoint);
-
                 xorPath(path);
-
                 if (path.area > info.turdsize) {
                     pathlist.push(path);
                 }
@@ -426,7 +331,6 @@ async function outline(c) {
 
             function quadform(Q, w) {
                 var v = new Array(3), i, j, sum;
-
                 v[0] = w.x;
                 v[1] = w.y;
                 v[2] = 1;
@@ -442,7 +346,6 @@ async function outline(c) {
 
             function interval(lambda, a, b) {
                 var res = new Point();
-
                 res.x = a.x + lambda * (b.x - a.x);
                 res.y = a.y + lambda * (b.y - a.y);
                 return res;
@@ -450,7 +353,6 @@ async function outline(c) {
 
             function dorth_infty(p0, p2) {
                 var r = new Point();
-
                 r.y = sign(p2.x - p0.x);
                 r.x = -sign(p2.y - p0.y);
 
@@ -546,7 +448,6 @@ async function outline(c) {
                 var i, x, y;
                 path.x0 = path.pt[0].x;
                 path.y0 = path.pt[0].y;
-
                 path.sums = [];
                 var s = path.sums;
                 s.push(new Sum(0, 0, 0, 0, 0));
@@ -559,7 +460,6 @@ async function outline(c) {
             }
 
             function calcLon(path) {
-
                 var n = path.len, pt = path.pt, dir,
                     pivk = new Array(n),
                     nc = new Array(n),
@@ -639,7 +539,6 @@ async function outline(c) {
                         dk.y = sign(pt[k].y - pt[k1].y);
                         cur.x = pt[k1].x - pt[i].x;
                         cur.y = pt[k1].y - pt[i].y;
-
                         a = xprod(constraint[0], cur);
                         b = xprod(constraint[0], dk);
                         c = xprod(constraint[1], cur);
@@ -700,13 +599,10 @@ async function outline(c) {
                     py = (pt[i].y + pt[j].y) / 2.0 - pt[0].y;
                     ey = (pt[j].x - pt[i].x);
                     ex = -(pt[j].y - pt[i].y);
-
                     a = ((x2 - 2 * x * px) / k + px * px);
                     b = ((xy - x * py - y * px) / k + px * py);
                     c = ((y2 - 2 * y * py) / k + py * py);
-
                     s = ex * ex * a + 2 * ex * ey * b + ey * ey * c;
-
                     return Math.sqrt(s);
                 }
 
@@ -886,7 +782,6 @@ async function outline(c) {
                     }
 
                     while (1) {
-
                         det = Q.at(0, 0) * Q.at(1, 1) - Q.at(0, 1) * Q.at(1, 0);
                         if (det !== 0.0) {
                             w.x = (-Q.at(0, 2) * Q.at(1, 1) + Q.at(1, 2) * Q.at(0, 1)) / det;
@@ -1014,27 +909,6 @@ async function outline(c) {
             }
         }
 
-        function process(c) {
-            if (c) {
-                callback = c;
-            }
-            if (!info.isReady) {
-                setTimeout(process, 100);
-                return;
-            }
-            bmToPathlist();
-            processPath();
-            callback();
-            callback = null;
-        }
-
-        function clear() {
-            bm = null;
-            pathlist = [];
-            callback = null;
-            info.isReady = false;
-        }
-
         function getSVG(size) {
             function path(curve) {
                 function segment(i) {
@@ -1068,12 +942,19 @@ async function outline(c) {
             return svg;
         }
 
-        imgElement.src = c;
-        process(function () {
 
-            resolve(getSVG(.25));
-        });
-    })
+        bm = new Bitmap(cvs.width, cvs.height);
+        var imgdataobj = ctx.getImageData(0, 0, bm.w, bm.h);
+        var l = imgdataobj.data.length, i, j, color;
+        for (i = 0, j = 0; i < l; i += 4, j++) {
+            color = 0.2126 * imgdataobj.data[i] + 0.7153 * imgdataobj.data[i + 1] +
+                0.0721 * imgdataobj.data[i + 2];
+            bm.data[j] = (color < 128 ? 1 : 0);
+        }
+        bmToPathlist();
+        processPath();
+        resolve(getSVG(1 / scale));
+    });
 }
 
 async function loadSVG(c, OverallPageNum) {
@@ -1082,7 +963,6 @@ async function loadSVG(c, OverallPageNum) {
         var tail = c.indexOf('"', head) - head;
         if (tail < 8) return
         var p = c.substr(head, tail).split("M");
-
         var minX;
         var maxX;
         var minY;
@@ -1091,7 +971,6 @@ async function loadSVG(c, OverallPageNum) {
         var midY;
         var n;
         var isX;
-
         var path = [];
         var newPath;
         for (var i = 0; i < p.length; i++) {
@@ -1142,7 +1021,7 @@ function sort(head) {
         table.removeChild(table.firstChild);
     }
     table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"> </div><div class="col">Description</div><div class="col">Symbol</div><div class="col">Qty</div></div>');
-    var threshold = 1
+    var threshold = 0
     paths.sort(function (a, b) {
         if (a[0] > b[0]) return 1
         if (a[0] < b[0]) return -1
@@ -1156,7 +1035,7 @@ function sort(head) {
     });
     var newSVG = [];
     var refs = [];
-    for (let p = 0; p< OverallPageNumber; p++){
+    for (let p = 0; p < OverallPageNumber; p++) {
         newSVG[p] = '<svg version="1.1" width="' + parseInt(svgDivs[p].parentNode.style.width) + '" height="' + parseInt(svgDivs[p].parentNode.style.height) + '" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="none"><path id="0" d="' + paths[0][1] + '"/>';
     }
     refs[paths[0][6]] = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '" fill="none" stroke="green" stroke-width=".5"/>';
@@ -1183,7 +1062,7 @@ function sort(head) {
         }
         if (differences > threshold) {
             newSVG[paths[l][6]] += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>'
-            size = Math.round(Math.max(paths[l][2], paths[l][3]) + 1)
+            size = Math.ceil(Math.max(paths[l][2], paths[l][3])) + 2
             table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
             lookBack = next
             quantity = 1;
@@ -1194,10 +1073,10 @@ function sort(head) {
         }
         refs[paths[l][6]] += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '" fill="none" stroke="green" stroke-width=".5"/>'
     }
-    size = Math.round(Math.max(paths[paths.length - 1][2], paths[paths.length - 1][3]) + 1)
+    size = Math.ceil(Math.max(paths[paths.length - 1][2], paths[paths.length - 1][3])) + 2
     table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
     sideBar.style.width = (table.offsetWidth + 5) + "px";
-    for (let p = 0; p < OverallPageNumber; p++){
+    for (let p = 0; p < OverallPageNumber; p++) {
         newSVG[p] += '</g>';
         while (svgDivs[p].firstChild) {
             svgDivs[p].removeChild(svgDivs[p].firstChild);
