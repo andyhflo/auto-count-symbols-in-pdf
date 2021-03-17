@@ -11,7 +11,7 @@ var table = document.getElementById('table');
 var canvasdiv = document.getElementById('drawings');
 var svgDivs = [];
 var OverallPageNumber = 0;
-const scale = 5;
+const scale = 4;
 
 dragbar.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -961,7 +961,7 @@ async function loadSVG(c, OverallPageNum) {
     return new Promise((resolve, reject) => {
         var head = c.indexOf('d="') + 5;
         var tail = c.indexOf('"', head) - head;
-        if (tail < 8) return
+        if (tail < 8) return resolve();
         var p = c.substr(head, tail).split("M");
         var minX;
         var maxX;
@@ -973,6 +973,7 @@ async function loadSVG(c, OverallPageNum) {
         var isX;
         var path = [];
         var newPath;
+        var rotate;
         for (var i = 0; i < p.length; i++) {
             var m = p[i].split(/[\sL,]+/).filter(function (el) {
                 return el != '';
@@ -983,7 +984,7 @@ async function loadSVG(c, OverallPageNum) {
             maxY = 0;
             isX = true;
             for (var j = 0; j < m.length; j++) {
-                n = parseFloat(m[j]);
+                n = Math.round(parseFloat(m[j]) * 1000) / 1000;
                 if (isX) {
                     minX = Math.min(minX, n);
                     maxX = Math.max(maxX, n);
@@ -994,9 +995,12 @@ async function loadSVG(c, OverallPageNum) {
                 }
                 isX = !isX;
             }
-            midX = Math.round(((minX + maxX) / 2) * 1000) / 1000;
-            midY = Math.round(((minY + maxY) / 2) * 1000) / 1000;
+            midX = Math.round((minX + maxX) / 2 * 1000) / 1000;
+            midY = Math.round((minY + maxY) / 2 * 1000) / 1000;
             newPath = "M ";
+
+
+
             for (var k = 0; k < m.length; k++) {
                 if (isX) {
                     n = Math.round((parseFloat(m[k]) - midX) * 1000) / 1000;
@@ -1008,9 +1012,26 @@ async function loadSVG(c, OverallPageNum) {
                 }
                 isX = !isX;
             }
-            path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, newPath, maxX - minX, maxY - minY, midX, midY, OverallPageNum, i]
+
+            // if right, rotate 90 degrees counterclockwise
+           // rotate = -90
+            // if left, rotate 90 degrees clockwise
+           // rotate = 90
+            // if upside down, rotate 180 degrees
+           // rotate = 180;
+            // if upright do nothing
+            rotate = 0
+
+            path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) + Math.pow((maxY - minY), 2), .5) * 10000) / 10000, //size
+                newPath,
+                rotate,
+            Math.round((maxX - minX) * 1000) / 1000, //width
+            Math.round((maxY - minY) * 1000) / 1000, //height
+                midX,
+                midY,
+                OverallPageNum,
+            paths.length]
             paths.push(path);
-            console.log('pushed ' + i)
         }
         resolve();
     })
@@ -1021,14 +1042,14 @@ function sort(head) {
         table.removeChild(table.firstChild);
     }
     table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"> </div><div class="col">Description</div><div class="col">Symbol</div><div class="col">Qty</div></div>');
-    var threshold = 0
+    var threshold = 100
     paths.sort(function (a, b) {
-        if (a[0] > b[0]) return 1
-        if (a[0] < b[0]) return -1
-        if (a[1] > b[1]) {
+        if (a[0] < b[0]) return 1
+        if (a[0] > b[0]) return -1
+        if (a[1] < b[1]) {
             return 1
         }
-        if (a[1] < b[1]) {
+        if (a[1] > b[1]) {
             return -1
         }
         return 0
@@ -1036,14 +1057,15 @@ function sort(head) {
     var newSVG = [];
     var refs = [];
     for (let p = 0; p < OverallPageNumber; p++) {
-        newSVG[p] = '<svg version="1.1" width="' + parseInt(svgDivs[p].parentNode.style.width) + '" height="' + parseInt(svgDivs[p].parentNode.style.height) + '" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="none"><path id="0" d="' + paths[0][1] + '"/>';
+        newSVG[p] = '<svg version="1.1" width="' + parseInt(svgDivs[p].parentNode.style.width) + '" height="' + parseInt(svgDivs[p].parentNode.style.height) + '" xmlns="http://www.w3.org/2000/svg">';
+        refs[p] = '';
     }
-    refs[paths[0][6]] = '<use href="#0" x="' + paths[0][4] + '" y="' + paths[0][5] + '" fill="none" stroke="green" stroke-width=".5"/>';
-    var repeats = 0;
+    refs[paths[0][7]] = '<use href="#' + paths[0][8] + '" x="' + paths[0][5] + '" y="' + paths[0][6] + '" transform="rotate(' + paths[0][2] + ',' + paths[0][5] + ',' + paths[0][6] + ')"/>';
     var quantity = 1;
     var lookBack = paths[0][1].split(/[\s,]+/)
     var differences;
     var size;
+    var list = "";
     for (var l = 1; l < paths.length; l++) {
         var next = paths[l][1].split(/[\s,]+/)
         differences = threshold + 1
@@ -1061,23 +1083,21 @@ function sort(head) {
             }
         }
         if (differences > threshold) {
-            newSVG[paths[l][6]] += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>'
-            size = Math.ceil(Math.max(paths[l][2], paths[l][3])) + 2
-            table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
+            size = Math.ceil(Math.max(paths[l - 1][3], paths[l - 1][4])) + 2
+            table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="' + list + paths[l - 1][8] + '"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path id="' + paths[l - quantity][8] + '" d="' + lookBack.toString().replace(/[,]/g, " ") + '"/></svg></div><div class="col">' + quantity + '</div></div>');
             lookBack = next
+            list = "";
             quantity = 1;
         } else {
-            newSVG[paths[l][6]] += '<path id="' + (l - repeats) + '" d="' + paths[l][1] + '"/>' //most of these duplicate paths are not needed, but somehow I need to make sure that every page that references a path has that path in that particular page
-            repeats++
             quantity++
+            list += paths[l - 1][8] + ", ";
         }
-        refs[paths[l][6]] += '<use href="#' + (l - repeats) + '" x="' + paths[l][4] + '" y="' + paths[l][5] + '" fill="none" stroke="green" stroke-width=".5"/>'
+        refs[paths[l][7]] += '<use href="#' + paths[l + 1 - quantity][8] + '" x="' + paths[l][5] + '" y="' + paths[l][6] + '" transform="rotate(' + paths[l][2] + ',' + paths[l][5] + ',' + paths[l][6] + ')"/>';
     }
-    size = Math.ceil(Math.max(paths[paths.length - 1][2], paths[paths.length - 1][3])) + 2
-    table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="Description"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path d="' + lookBack.toString().replace(/[,]/g, " ") + '" fill="none" stroke="black" stroke-width=".25"/></svg></div><div class="col">' + quantity + '</div></div>');
+    size = Math.ceil(Math.max(paths[paths.length - 1][3], paths[paths.length - 1][4])) + 2
+    table.insertAdjacentHTML('beforeend', '<div class="row"><div class="col"></div><div class="col"><input type="text" maxlength="15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} title="Description" placeholder="' + paths[paths.length - 1][8] + '"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' + size + '"  version="1.1"><path id="' + paths[paths.length - quantity][8] + '" d="' + lookBack.toString().replace(/[,]/g, " ") + '"/></svg></div><div class="col">' + quantity + '</div></div>');
     sideBar.style.width = (table.offsetWidth + 5) + "px";
     for (let p = 0; p < OverallPageNumber; p++) {
-        newSVG[p] += '</g>';
         while (svgDivs[p].firstChild) {
             svgDivs[p].removeChild(svgDivs[p].firstChild);
         }

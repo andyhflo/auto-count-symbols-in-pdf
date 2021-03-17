@@ -50,9 +50,31 @@ canvas {
     opacity: 1;
 }
 
-use:hover, path:hover {
+use {
+    stroke-opacity: 1;
+    fill-opacity: 0;
+    fill: white;
+    stroke-width: 0;
+
+  }
+
+use:hover {
+    fill-opacity: 0;
+    fill: white;
+    stroke-width: 3;
+
+  }
+
+  path {
+    stroke: blue;
+    fill: white;
+  }
+
+path:hover {
     stroke: red;
-    stroke-width: 1;
+    stroke-opacity: 1;
+    fill: white;
+    stroke-width: 3;
 
   }
   
