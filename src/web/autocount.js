@@ -373,7 +373,7 @@ async function outline(ctx, cvs) {
             sign(pt[k].y - pt[k1].y)) / 2;
           ct[dir]++;
 
-          if (ct[0] && ct[1] && ct[2] && ct[3]) {
+          if (ct[0] && ct[1] && ct[2] || ct[0] && ct[1] && ct[3] || ct[0] && ct[2] && ct[3] || ct[1] && ct[2] && ct[3]) {
             pivk[i] = k1;
             foundk = 1;
             break;
@@ -442,107 +442,27 @@ async function outline(ctx, cvs) {
     }
 
     function bestPolygon(path) {
-      function penalty3(path, i, j) {
-        var n = path.len, pt = path.pt, sums = path.sums;
-        var x, y, xy, x2, y2,
-          k, a, b, c, s,
-          px, py, ex, ey,
-          r = 0;
-        if (j >= n) {
-          j -= n;
-          r = 1;
-        }
-
-        if (r === 0) {
-          x = sums[j + 1].x - sums[i].x;
-          y = sums[j + 1].y - sums[i].y;
-          x2 = sums[j + 1].x2 - sums[i].x2;
-          xy = sums[j + 1].xy - sums[i].xy;
-          y2 = sums[j + 1].y2 - sums[i].y2;
-          k = j + 1 - i;
-        } else {
-          x = sums[j + 1].x - sums[i].x + sums[n].x;
-          y = sums[j + 1].y - sums[i].y + sums[n].y;
-          x2 = sums[j + 1].x2 - sums[i].x2 + sums[n].x2;
-          xy = sums[j + 1].xy - sums[i].xy + sums[n].xy;
-          y2 = sums[j + 1].y2 - sums[i].y2 + sums[n].y2;
-          k = j + 1 - i + n;
-        }
-
-        px = (pt[i].x + pt[j].x) / 2.0 - pt[0].x;
-        py = (pt[i].y + pt[j].y) / 2.0 - pt[0].y;
-        ey = (pt[j].x - pt[i].x);
-        ex = -(pt[j].y - pt[i].y);
-        a = ((x2 - 2 * x * px) / k + px * px);
-        b = ((xy - x * py - y * px) / k + px * py);
-        c = ((y2 - 2 * y * py) / k + py * py);
-        s = ex * ex * a + 2 * ex * ey * b + ey * ey * c;
-        return Math.sqrt(s);
+      var i, j, n = path.len;
+      path.po = new Array();
+      i = path.lon.indexOf(path.lon[0], n / 2)
+      if (i != -1) {
+        i = i - 1
+      } else {
+        i = n - 1
       }
-
-      var i, j, m, k,
-        n = path.len,
-        pen = new Array(n + 1),
-        prev = new Array(n + 1),
-        clip0 = new Array(n),
-        clip1 = new Array(n + 1),
-        seg0 = new Array(n + 1),
-        seg1 = new Array(n + 1),
-        thispen, best, c;
-
-      for (i = 0; i < n; i++) {
-        c = mod(path.lon[mod(i - 1, n)] - 1, n);
-        if (c == i) {
-          c = mod(i + 1, n);
-        }
-        if (c < i) {
-          clip0[i] = n;
-        } else {
-          clip0[i] = c;
-        }
-      }
-
-      j = 1;
-      for (i = 0; i < n; i++) {
-        while (j <= clip0[i]) {
-          clip1[j] = i;
-          j++;
-        }
-      }
-
-      i = 0;
-      for (j = 0; i < n; j++) {
-        seg0[j] = i;
-        i = clip0[i];
-      }
-      seg0[j] = n;
-      m = j;
-      i = n;
-      for (j = m; j > 0; j--) {
-        seg1[j] = i;
-        i = clip1[i];
-      }
-      seg1[0] = 0;
-      pen[0] = 0;
-      for (j = 1; j <= m; j++) {
-        for (i = seg1[j]; i <= seg0[j]; i++) {
-          best = -1;
-          for (k = seg0[j - 1]; k >= clip1[i]; k--) {
-            thispen = penalty3(path, k, i) + pen[k];
-            if (best < 0 || thispen < best) {
-              prev[i] = k;
-              best = thispen;
-            }
+      path.po[0] = 0;
+      for (j = 1; j , n; j++) {
+        path.po[j] = path.lon[i];
+        i = path.lon.indexOf(path.lon[path.po[j]]) - 1
+        if (!(path.lon[i] > path.po[j])) {
+          if (path.lon[i + 1] < path.po[j]) {
+            break;
+          } else {
+            i++;
           }
-          pen[i] = best;
         }
       }
-      path.m = m;
-      path.po = new Array(m);
-      for (i = n, j = m - 1; i > 0; j--) {
-        i = prev[i];
-        path.po[j] = i;
-      }
+      path.m = j + 1;
     }
 
     function reverse(path) {
@@ -712,7 +632,7 @@ function sort(head) {
   table.insertAdjacentHTML('beforeend', '<div class="row">\
     <div class="col"></div><div class="col">Description</div>\
     <div class="col">Symbol</div><div class="col">Qty</div></div>');
-  var threshold = 0;
+  var threshold = 10;
   paths.sort(function (a, b) {
     if (a[0] < b[0]) return 1;
     if (a[0] > b[0]) return -1;
