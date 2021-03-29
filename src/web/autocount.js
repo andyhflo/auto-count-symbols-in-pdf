@@ -29,7 +29,7 @@ dragbar.addEventListener("mousedown", (e) => {
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
   dropArea.addEventListener(eventName, preventDefaults, false);
   document.body.addEventListener(eventName, preventDefaults, false);
-})
+});
 dropArea.addEventListener('drop', handleDrop, false);
 function preventDefaults(e) {
   e.preventDefault();
@@ -77,7 +77,7 @@ async function handleDrop(e) {
                 },
                   renderTask = page.render(renderContext);
                 renderTask.promise.then(async function () {
-                  await loadSVG(await outline(this.ctx, this.cvs), this.OPN);
+                  await outline(this.ctx, this.cvs, this.OPN);
                   pagesProcessed++;
                   if (pagesProcessed === totalPages) {
                     filesProcessed++;
@@ -104,7 +104,7 @@ async function handleDrop(e) {
   }
 }
 
-async function outline(ctx, cvs) {
+async function outline(ctx, cvs, OverallPageNum) {
   return new Promise((resolve, reject) => {
     function Point(x, y) {
       this.x = x;
@@ -155,10 +155,15 @@ async function outline(ctx, cvs) {
       this.area = 0;
       this.len = 0;
       this.pt = [];
-      this.minX = 100000;
-      this.minY = 100000;
+      this.po = [[], [], [], []];
+      this.minX = Infinity;
+      this.minY = Infinity;
       this.maxX = -1;
       this.maxY = -1;
+      this.firstMinX = -1;
+      this.firstMinY = -1;
+      this.firstMaxX = -1;
+      this.firstMaxY = -1;
     }
 
     var bm = null,
@@ -178,8 +183,7 @@ async function outline(ctx, cvs) {
     }
     // bmToPathlist
     var bm1 = bm.copy(),
-      currentPoint = new Point(0, 0),
-      path;
+      currentPoint = new Point(0, 0), path;
 
     function findNext(point) {
       var i = bm1.w * point.y + point.x;
@@ -216,10 +220,20 @@ async function outline(ctx, cvs) {
 
       while (1) {
         path.pt.push(new Point(x, y));
-        if (x > path.maxX) path.maxX = x;
-        if (x < path.minX) path.minX = x;
-        if (y > path.maxY) path.maxY = y;
+        if (x > path.maxX) {
+          path.maxX = x;
+          path.firstMaxX = path.len;
+        }
+        if (x < path.minX) {
+          path.minX = x;
+          path.firstMinX = path.len;
+        }
+        if (y > path.maxY) {
+          path.maxY = y;
+          path.firstMaxY = path.len;
+        }
         if (y < path.minY) path.minY = y;
+
         path.len++;
         x += dirx;
         y += diry;
@@ -251,6 +265,12 @@ async function outline(ctx, cvs) {
           diry = -tmp;
         }
       }
+      for (var fmy = path.firstMaxX; fmy < path.len; fmy++) {
+        if (path.pt[fmy].y == path.minY) {
+          path.firstMinY = fmy;
+          break;
+        }
+      }
       return path;
     }
 
@@ -276,26 +296,25 @@ async function outline(ctx, cvs) {
       path = findPath(currentPoint);
       xorPath(path);
       if (path.area > info.turdsize) {
+        if (path.sign === "-") {
+          var irev, jrev, rev;
+          for (irev = 0, jrev = path.len - 1; irev < jrev; irev++, jrev--) {
+            rev = path.pt[irev];
+            path.pt[irev] = path.pt[jrev];
+            path.pt[jrev] = rev;
+          }
+          path.firstMaxX = path.len - path.firstMaxX - 1;
+          path.firstMaxY = path.len - path.firstMaxY - 1;
+          path.firstMinX = path.len - path.firstMinX - 1;
+          path.firstMinY = path.len - path.firstMinY - 1;
+        }
         pathlist.push(path);
       }
     }
-
     // processPath
-
-    function Quad() {
-      this.data = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    }
-
-    Quad.prototype.at = function (x, y) {
-      return this.data[x * 3 + y];
-    };
-
-    function Sum(x, y, xy, x2, y2) {
+    function Sum(x, y) {
       this.x = x;
       this.y = y;
-      this.xy = xy;
-      this.x2 = x2;
-      this.y2 = y2;
     }
 
     function mod(a, n) {
@@ -324,12 +343,11 @@ async function outline(ctx, cvs) {
       path.y0 = path.pt[0].y;
       path.sums = [];
       var s = path.sums;
-      s.push(new Sum(0, 0, 0, 0, 0));
+      s.push(new Sum(0, 0));
       for (i = 0; i < path.len; i++) {
         x = path.pt[i].x - path.x0;
         y = path.pt[i].y - path.y0;
-        s.push(new Sum(s[i].x + x, s[i].y + y, s[i].xy + x * y,
-          s[i].x2 + x * x, s[i].y2 + y * y));
+        s.push(new Sum(s[i].x + x, s[i].y + y));
       }
     }
 
@@ -373,7 +391,8 @@ async function outline(ctx, cvs) {
             sign(pt[k].y - pt[k1].y)) / 2;
           ct[dir]++;
 
-          if (ct[0] && ct[1] && ct[2] || ct[0] && ct[1] && ct[3] || ct[0] && ct[2] && ct[3] || ct[1] && ct[2] && ct[3]) {
+          if (ct[0] && ct[1] && ct[2] || ct[0] && ct[1] && ct[3]
+            || ct[0] && ct[2] && ct[3] || ct[1] && ct[2] && ct[3]) {
             pivk[i] = k1;
             foundk = 1;
             break;
@@ -418,7 +437,7 @@ async function outline(ctx, cvs) {
           c = xprod(constraint[1], cur);
           d = xprod(constraint[1], dk);
 
-          j = 10000000;
+          j = Infinity;
           if (b < 0) {
             j = Math.floor(a / -b);
           }
@@ -442,187 +461,456 @@ async function outline(ctx, cvs) {
     }
 
     function bestPolygon(path) {
-      var i, j, n = path.len;
-      path.po = new Array();
-      i = path.lon.indexOf(path.lon[0], n / 2)
-      if (i != -1) {
-        i = i - 1
+      var i, j0, j1, j2, j3, n = path.len, startOver = false;
+      if (path.sign === "-") {
+        path.po[0][0] = path.firstMinX;
+        i = path.lon.indexOf(path.lon[path.firstMinX]) - 1;
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMinX], path.firstMaxX) - 1;
+          } else i = n - 1;
+        }
+        if (!(path.lon[i] > path.po[0][0])) {
+          if (path.lon[(i + 1) % path.len] < path.po[0][0]) {
+            startOver = true;
+          } else i = (i + 1) % path.len;
+        }
+        if (path.lon[i] > path.firstMinX || path.lon[i] < path.firstMinY) {
+          for (j0 = 1; j0 < n; j0++) {
+            path.po[0][j0] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[0][j0]]) - 1;
+            if (i == -1) {
+              if (path.lon[0] == path.lon[n - 1]) {
+                i = path.lon.indexOf(path.lon[path.po[0][j0]],
+                  path.firstMaxX) - 1;
+              } else i = n - 1;
+            }
+            if (!(path.lon[i] > path.po[0][j0])) {
+              if (path.lon[(i + 1) % path.len] < path.po[0][j0]) {
+                startOver = true;
+              } else i = (i + 1) % path.len;
+            }
+            if (startOver != false && path.lon[i] >= path.firstMinY) break;
+          }
+        }
+
+        path.po[1][0] = path.firstMinY;
+        i = path.lon.indexOf(path.lon[path.firstMinY]) - 1;
+        if (path.lon[i] < path.firstMaxX) {
+          for (j1 = 1; j1 < n; j1++) {
+            path.po[1][j1] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[1][j1]]) - 1;
+            if (!(path.lon[i] > path.po[1][j1])) i++;
+            if (path.lon[i] >= path.firstMaxX) break;
+          }
+        }
+
+        path.po[2][0] = path.firstMaxX;
+        i = path.lon.indexOf(path.lon[path.firstMaxX]) - 1;
+        if (path.lon[i] < path.firstMaxY) {
+          for (j2 = 1; j2 < n; j2++) {
+            path.po[2][j2] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[2][j2]]) - 1;
+            if (!(path.lon[i] > path.po[2][j2])) i++;
+            if (path.lon[i] >= path.firstMaxY) break;
+          }
+        }
+
+        path.po[3][0] = path.firstMaxY;
+        i = path.lon.indexOf(path.lon[path.firstMaxY]) - 1;
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMaxY], path.firstMaxY) - 1;
+          } else i = n - 1;
+        }
+        if (path.lon[i] < path.firstMinX) {
+          for (j3 = 1; j3 < n; j3++) {
+            path.po[3][j3] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[3][j3]]) - 1;
+            if (!(path.lon[i] > path.po[3][j3])) i++;
+            if (path.lon[i] >= path.firstMinX) break;
+          }
+        }
       } else {
-        i = n - 1
-      }
-      path.po[0] = 0;
-      for (j = 1; j , n; j++) {
-        path.po[j] = path.lon[i];
-        i = path.lon.indexOf(path.lon[path.po[j]]) - 1
-        if (!(path.lon[i] > path.po[j])) {
-          if (path.lon[i + 1] < path.po[j]) {
-            break;
-          } else {
-            i++;
+        startOver = false;
+        path.po[0][0] = path.firstMinY;
+        i = path.lon.indexOf(path.lon[path.firstMinY]) - 1;
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMinY], path.firstMaxY) - 1;
+          } else i = n - 1;
+        }
+        if (!(path.lon[i] > path.po[0][0])) {
+          if (path.lon[(i + 1) % path.len] < path.po[0][0]) {
+            startOver = true;
+          } else i = (i + 1) % path.len;
+        }
+        if (path.lon[i] > path.firstMinY || path.lon[i] < path.firstMinX) {
+          for (j0 = 1; j0 < n; j0++) {
+            path.po[0][j0] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[0][j0]]) - 1;
+            if (i == -1) {
+              if (path.lon[0] == path.lon[n - 1]) {
+                i = path.lon.indexOf(path.lon[path.po[0][j0]],
+                  path.firstMaxY) - 1;
+              } else i = n - 1;
+            }
+            if (!(path.lon[i] > path.po[0][j0])) {
+              if (path.lon[(i + 1) % path.len] < path.po[0][j0]) {
+                startOver = true;
+              } else i = (i + 1) % path.len;
+            }
+            if (startOver != false && path.lon[i] >= path.firstMinX) break;
+          }
+        }
+
+        path.po[1][0] = path.firstMinX;
+        i = path.lon.indexOf(path.lon[path.firstMinX]) - 1;
+        if (path.lon[i] < path.firstMaxY) {
+          for (j1 = 1; j1 < n; j1++) {
+            path.po[1][j1] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[1][j1]]) - 1;
+            if (!(path.lon[i] > path.po[1][j1])) i++;
+            if (path.lon[i] >= path.firstMaxY) break;
+          }
+        }
+
+        path.po[2][0] = path.firstMaxY;
+        i = path.lon.indexOf(path.lon[path.firstMaxY]) - 1;
+        if (path.lon[i] < path.firstMaxX) {
+          for (j2 = 1; j2 < n; j2++) {
+            path.po[2][j2] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[2][j2]]) - 1;
+            if (!(path.lon[i] > path.po[2][j2])) i++;
+            if (path.lon[i] >= path.firstMaxX) break;
+          }
+        }
+
+        startOver = false;
+        path.po[3][0] = path.firstMaxX;
+        i = path.lon.indexOf(path.lon[path.firstMaxX]) - 1
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMaxX], path.firstMaxX) - 1;
+          } else i = n - 1;
+        }
+        if (!(path.lon[i] > path.po[3][0])) {
+          if (path.lon[(i + 1) % path.len] < path.po[3][0]) {
+            startOver = true;
+          } else i = (i + 1) % path.len;
+        }
+        if (path.lon[i] < path.firstMinY) {
+          for (j3 = 1; j3 < n; j3++) {
+            path.po[3][j3] = path.lon[i];
+            i = path.lon.indexOf(path.lon[path.po[3][j3]]) - 1;
+            if (i == -1) {
+              if (path.lon[0] == path.lon[n - 1]) {
+                i = path.lon.indexOf(path.lon[path.po[3][j3]],
+                  path.firstMaxY) - 1;
+              } else i = n - 1;
+            }
+            if (!(path.lon[i] > path.po[3][j3])) {
+              if (path.lon[(i + 1) % path.len] < path.po[3][j3]) {
+                startOver = true;
+              }
+              i = (i + 1) % path.len;
+            }
+            if (path.lon[i] >= path.firstMinY ||
+              (startOver != false && path.lon[i] >= 0)) break;
           }
         }
       }
-      path.m = j + 1;
-    }
-
-    function reverse(path) {
-      var i, j, tmp;
-      for (i = 0, j = path.m - 1; i < j; i++, j--) {
-        tmp = path.po[i];
-        path.po[i] = path.po[j];
-        path.po[j] = tmp;
-      }
+      path.m = 4 + j0 + j1 + j2 + j3;
+      if (path.m > path.len) console.log('j0: ' + j0 + ', j1: ' + j1 + ', j2: '
+        + j2 + ', j3: ' + j3 + ', sign: ' + path.sign);
     }
 
     for (var i = 0; i < pathlist.length; i++) {
       var path = pathlist[i];
+      // console.log('pathlist index: ' + i)
       calcSums(path);
       calcLon(path);
       bestPolygon(path);
-      if (path.sign === "-") {
-        reverse(path);
-      }
-
-    }
-    // getSVG
-    function pathGet(path) {
-      function segment(i) {
-        return (path.pt[path.po[i]].x / scale).toFixed(3) + ' ' +
-          (path.pt[path.po[i]].y / scale).toFixed(3) + ' ';
-      }
-
-      var i, p = 'M ';
-      for (i = 0; i < path.m; i++) {
-        p += segment(i);
-      }
-      return p;
     }
 
-    var w = bm.w / scale, h = bm.h / scale,
-      len = pathlist.length, c, i;
+    var minX, maxX, minY, maxY, midX, midY, COGX, COGY, n, isX, path = [],
+      q0, q1, q2, q3, rotate, tmp;
 
-    var svg = '<svg version="1.1" width="' + w + '" height="' + h +
-      '" xmlns="http://www.w3.org/2000/svg">';
-    svg += '<path d="';
-    for (i = 0; i < len; i++) {
-      svg += pathGet(pathlist[i]);
-    }
-    svg += '" stroke="black" fill="white"/></svg>';
-    resolve(svg);
-  });
-}
-
-async function loadSVG(c, OverallPageNum) {
-  return new Promise((resolve, reject) => {
-    var head = c.indexOf('d="') + 5,
-      tail = c.indexOf('"', head) - head;
-    if (tail < 8) return resolve();
-    var minX, maxX, minY, maxY, midX, midY, n, isX, path = [], newPath, rotate,
-      p = c.substr(head, tail).split("M");
-    for (var i = 0; i < p.length; i++) {
-      var m = p[i].split(/[\sL,]+/).filter(function (el) {
-        return el != '';
-      });
-      minX = Infinity;
-      minY = Infinity;
-      maxX = 0;
-      maxY = 0;
-      allX = 0;
-      allY = 0;
-      pointsInPath = 0;
-      isX = true;
-      for (var j = 0; j < m.length; j++) {
-        n = Math.round(parseFloat(m[j]) * 1000) / 1000;
-        if (isX) {
-          minX = Math.min(minX, n);
-          maxX = Math.max(maxX, n);
-          allX += n;
-        }
-        else {
-          minY = Math.min(minY, n);
-          maxY = Math.max(maxY, n);
-          allY += n;
-          pointsInPath++;
-        }
-        isX = !isX;
-      }
+    for (var i = 0; i < pathlist.length; i++) {
+      minX = Math.round((pathlist[i].minX / scale) * 1000) / 1000;
+      maxX = Math.round((pathlist[i].maxX / scale) * 1000) / 1000;
+      minY = Math.round((pathlist[i].minY / scale) * 1000) / 1000;
+      maxY = Math.round((pathlist[i].maxY / scale) * 1000) / 1000;
       midX = Math.round((minX + maxX) / 2 * 1000) / 1000;
       midY = Math.round((minY + maxY) / 2 * 1000) / 1000;
-      newPath = "M ";
-      if (Math.abs((allY / pointsInPath - midY) / (allX / pointsInPath - midX))
-        > 1) {      //rotate 0 degrees
-        if ((allY / pointsInPath - midY) > 0) {
-          for (var k = 0; k < m.length; k++) {
-            if (isX) {
-              n = Math.round((parseFloat(m[k]) - midX) * 1000) / 1000;
-              newPath += n + " ";
+      width = Math.round((maxX - minX) * 1000) / 1000;
+      height = Math.round((maxY - minY) * 1000) / 1000;
+      COGX = ((pathlist[i].sums[pathlist[i].len].x / pathlist[i].len +
+        pathlist[i].x0) / scale - midX) / width;
+      COGY = ((pathlist[i].sums[pathlist[i].len].y / pathlist[i].len +
+        pathlist[i].y0) / scale - midY) / height;
+      q0 = q1 = q2 = q3 = '';
+      if ((maxX - minX) > (maxY - minY)) {
+        if (Math.abs(COGX) > Math.abs(COGY)) {
+          if (COGX > 0) {      //rotate 0 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3) + ' ';
             }
-            else {
-              n = Math.round((parseFloat(m[k]) - midY) * 1000) / 1000;
-              newPath += n + " ";
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3) + ' ';
             }
-            isX = !isX;
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[2][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[3][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            rotate = 0;
           }
-          rotate = 0
-        }
-        else {      //rotate 180 degrees
-          for (var k = 0; k < m.length; k++) {
-            if (isX) {
-              n = -Math.round((parseFloat(m[k]) - midX) * 1000) / 1000;
-              newPath += n + " ";
+          else {      //rotate 180 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
             }
-            else {
-              n = -Math.round((parseFloat(m[k]) - midY) * 1000) / 1000;
-              newPath += n + " ";
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
             }
-            isX = !isX;
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[2][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            rotate = 180;
+            COGX = - COGX;
+            COGY = - COGY;
           }
-          rotate = 180
+        } else {
+          if (COGY > 0) {      //rotate 0 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[2][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[3][k]].y /
+                  scale - midY).toFixed(3) + ' ';
+            }
+            rotate = 0;
+          }
+          else {      //rotate 180 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[2][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3)) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].y /
+                  scale - midY).toFixed(3)) + ' ';
+            }
+            rotate = 180;
+            COGX = - COGX;
+            COGY = - COGY;
+          }
         }
+
       } else {
-        if ((allX / pointsInPath - midX) > 0) {      //rotate 90 degrees
-          for (var k = 0; k < m.length; k++) {
-            if (isX) {
-              n = Math.round((parseFloat(m[k + 1]) - midY) * 1000) / 1000;
-              newPath += n + " ";
+        if (Math.abs(COGX) > Math.abs(COGY)) {
+          if (COGX < 0) {      //rotate 90 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
             }
-            else {
-              n = - Math.round((parseFloat(m[k - 1]) - midX) * 1000) / 1000;
-              newPath += n + " ";
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
             }
-            isX = !isX;
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[2][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            rotate = 90;
+            tmp = - COGX;
+            COGX = COGY;
+            COGY = tmp;
           }
-          rotate = 90
-        }
-        else {      //rotate -90 degrees
-          for (var k = 0; k < m.length; k++) {
-            if (isX) {
-              n = - Math.round((parseFloat(m[k + 1]) - midY) * 1000) / 1000;
-              newPath += n + " ";
+          else {      //rotate -90 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3) + ' ';
             }
-            else {
-              n = Math.round((parseFloat(m[k - 1]) - midX) * 1000) / 1000;
-              newPath += n + " ";
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[1][k]].x /
+                  scale - midX).toFixed(3) + ' ';
             }
-            isX = !isX;
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[2][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            rotate = -90;
+            tmp = COGX;
+            COGX = - COGY;
+            COGY = tmp;
           }
-          rotate = -90
+
+
+        } else {
+          if (COGY > 0) {      //rotate 90 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[2][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3) + ' ' +
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3)) + ' ';
+            }
+            rotate = 90;
+            tmp = - COGX;
+            COGX = COGY;
+            COGY = tmp;
+          }
+          else {      //rotate -90 degrees
+            for (var k = 0; k < pathlist[i].po[0].length; k++) {
+              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[1][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[2][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3)) + ' ' +
+                (pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3) + ' ';
+            }
+            rotate = -90;
+            tmp = COGX;
+            COGX = - COGY;
+            COGY = tmp;
+          }
         }
       }
-      path = [Math.round(Math.pow(Math.pow((maxX - minX), 2) +
-        Math.pow((maxY - minY), 2), .5) * 10000) / 10000, //size
-        newPath,
-        rotate,
-      Math.round((maxX - minX) * 1000) / 1000, //width
-      Math.round((maxY - minY) * 1000) / 1000, //height
-        midX,
-        midY,
-        OverallPageNum,
-      paths.length]
+
+      path = [Math.round(pathlist[i].area / scale / scale),    // 0
+      [q0, q1, q2, q3],     // 1
+        rotate,     // 2
+        width,     // 3
+        height,     // 4
+        midX,     // 5
+        midY,     // 6
+        OverallPageNum,     // 7
+      paths.length,     // 8
+      Math.abs(COGY) / Math.abs(COGX),     // 9
+        COGX,     // 10
+        COGY]     // 11
       paths.push(path);
     }
     resolve();
-  })
+  });
 }
 
 function sort(head) {
@@ -632,12 +920,12 @@ function sort(head) {
   table.insertAdjacentHTML('beforeend', '<div class="row">\
     <div class="col"></div><div class="col">Description</div>\
     <div class="col">Symbol</div><div class="col">Qty</div></div>');
-  var threshold = 10;
+  var threshold = 0;
   paths.sort(function (a, b) {
     if (a[0] < b[0]) return 1;
     if (a[0] > b[0]) return -1;
-    if (a[1] < b[1]) return 1;
-    if (a[1] > b[1]) return -1;
+    if (a[9] < b[9]) return 1;
+    if (a[9] > b[9]) return -1;
     return 0;
   });
   var newSVG = [], refs = [];
@@ -652,9 +940,11 @@ function sort(head) {
     '" y="' + paths[0][6] + '" transform="rotate(' + paths[0][2] + ',' +
     paths[0][5] + ',' + paths[0][6] + ')"/>';
   var quantity = 1, differences, size, list = "",
-    lookBack = paths[0][1].split(/[\s,]+/);
+    lookBack = paths[0][1][0].split(/[\s,]+/) + paths[0][1][1].split(/[\s,]+/)
+      + paths[0][1][2].split(/[\s,]+/) + paths[0][1][3].split(/[\s,]+/);
   for (var l = 1; l < paths.length; l++) {
-    var next = paths[l][1].split(/[\s,]+/);
+    var next = paths[l][1][0].split(/[\s,]+/) + paths[l][1][1].split(/[\s,]+/)
+      + paths[l][1][2].split(/[\s,]+/) + paths[l][1][3].split(/[\s,]+/);
     differences = threshold + 1;
     if (lookBack.length == next.length) {
       differences = 0;
@@ -672,13 +962,13 @@ function sort(head) {
     if (differences > threshold) {
       size = Math.ceil(Math.max(paths[l - 1][3], paths[l - 1][4])) + 2;
       table.insertAdjacentHTML('beforeend', '<div class="row">\
-        <div class="col"></div><div class="col"><input type="text" maxlength="15"\
-        size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} \
+        <div class="col"></div><div class="col"><input type="text" maxlength=\
+        "15" size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} \
         title="Description" placeholder="' + list + paths[l - 1][8] + '"></div>\
         <div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" \
-        height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' +
-        size + '"  version="1.1"><path id="' + paths[l - quantity][8] + '" d="' +
-        lookBack.toString().replace(/[,]/g, " ") + 'z"/></svg></div>\
+        height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' '
+        + size + '"  version="1.1"><path id="' + paths[l - quantity][8] +
+        '" d="M' + lookBack.toString().replace(/[,]/g, " ") + 'z"/></svg></div>\
         <div class="col">' + quantity + '</div></div>');
       lookBack = next;
       list = "";
@@ -687,8 +977,8 @@ function sort(head) {
       quantity++;
       list += paths[l - 1][8] + ", ";
     }
-    refs[paths[l][7]] += '<use href="#' + paths[l + 1 - quantity][8] + '" x="' +
-      paths[l][5] + '" y="' + paths[l][6] + '" transform="rotate(' +
+    refs[paths[l][7]] += '<use href="#' + paths[l + 1 - quantity][8] + '" x="'
+      + paths[l][5] + '" y="' + paths[l][6] + '" transform="rotate(' +
       paths[l][2] + ',' + paths[l][5] + ',' + paths[l][6] + ')"/>';
   }
   size = Math.ceil(Math.max(paths[paths.length - 1][3],
@@ -696,12 +986,12 @@ function sort(head) {
   table.insertAdjacentHTML('beforeend', '<div class="row">\
     <div class="col"></div><div class="col"><input type="text" maxlength="15" \
     size="15" name="description" pattern=[A-Za-z][A-Za-z\d]{4,29} \
-    title="Description" placeholder="' + paths[paths.length - 1][8] + '"></div>\
-    <div class="col"><svg xmlns="http://www.w3.org/2000/svg" width="15" \
-    height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size + ' ' +
-    size + '"  version="1.1"><path id="' + paths[paths.length - quantity][8] +
-    '" d="' + lookBack.toString().replace(/[,]/g, " ") + 'z"/></svg></div>\
-    <div class="col">' + quantity + '</div></div>');
+    title="Description" placeholder="' + list + paths[paths.length - 1][8] +
+    '"></div><div class="col"><svg xmlns="http://www.w3.org/2000/svg" \
+    width="15" height="15" viewBox="' + -size / 2 + ' ' + -size / 2 + ' ' + size
+    + ' ' + size + '"  version="1.1"><path id="' + paths[paths.length -
+    quantity][8] + '" d="M' + lookBack.toString().replace(/[,]/g, " ") + 'z"/>\
+      </svg></div><div class="col">' + quantity + '</div></div>');
   sideBar.style.width = (table.offsetWidth + 5) + "px";
   for (let p = 0; p < OverallPageNumber; p++) {
     while (svgDivs[p].firstChild) {
