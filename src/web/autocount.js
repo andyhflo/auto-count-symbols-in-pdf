@@ -463,6 +463,7 @@ async function outline(ctx, cvs, OverallPageNum) {
     function bestPolygon(path) {
       var i, j0, j1, j2, j3, n = path.len, startOver = false;
       if (path.sign === "-") {
+        startOver = false;
         path.po[0][0] = path.firstMinX;
         i = path.lon.indexOf(path.lon[path.firstMinX]) - 1;
         if (i == -1) {
@@ -496,6 +497,11 @@ async function outline(ctx, cvs, OverallPageNum) {
 
         path.po[1][0] = path.firstMinY;
         i = path.lon.indexOf(path.lon[path.firstMinY]) - 1;
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMinY], path.firstMinY) - 1;
+          } else i = n - 1;
+        }
         if (path.lon[i] < path.firstMaxX) {
           for (j1 = 1; j1 < n; j1++) {
             path.po[1][j1] = path.lon[i];
@@ -516,6 +522,7 @@ async function outline(ctx, cvs, OverallPageNum) {
           }
         }
 
+        startOver = false;
         path.po[3][0] = path.firstMaxY;
         i = path.lon.indexOf(path.lon[path.firstMaxY]) - 1;
         if (i == -1) {
@@ -523,12 +530,29 @@ async function outline(ctx, cvs, OverallPageNum) {
             i = path.lon.indexOf(path.lon[path.firstMaxY], path.firstMaxY) - 1;
           } else i = n - 1;
         }
+        if (!(path.lon[i] > path.po[3][0])) {
+          if (path.lon[(i + 1) % path.len] < path.po[3][0]) {
+            startOver = true;
+          } else i = (i + 1) % path.len;
+        }
         if (path.lon[i] < path.firstMinX) {
           for (j3 = 1; j3 < n; j3++) {
             path.po[3][j3] = path.lon[i];
             i = path.lon.indexOf(path.lon[path.po[3][j3]]) - 1;
-            if (!(path.lon[i] > path.po[3][j3])) i++;
-            if (path.lon[i] >= path.firstMinX) break;
+            if (i == -1) {
+              if (path.lon[0] == path.lon[n - 1]) {
+                i = path.lon.indexOf(path.lon[path.po[3][j3]],
+                  path.firstMaxY) - 1;
+              } else i = n - 1;
+            }
+            if (!(path.lon[i] > path.po[3][j3])) {
+              if (path.lon[(i + 1) % path.len] < path.po[3][j3]) {
+                startOver = true;
+              }
+              i = (i + 1) % path.len;
+            }
+            if (path.lon[i] >= path.firstMinX ||
+              (startOver != false && path.lon[i] >= 0)) break;
           }
         }
       } else {
@@ -566,6 +590,11 @@ async function outline(ctx, cvs, OverallPageNum) {
 
         path.po[1][0] = path.firstMinX;
         i = path.lon.indexOf(path.lon[path.firstMinX]) - 1;
+        if (i == -1) {
+          if (path.lon[0] == path.lon[n - 1]) {
+            i = path.lon.indexOf(path.lon[path.firstMinX], path.firstMinX) - 1;
+          } else i = n - 1;
+        }
         if (path.lon[i] < path.firstMaxY) {
           for (j1 = 1; j1 < n; j1++) {
             path.po[1][j1] = path.lon[i];
@@ -634,7 +663,7 @@ async function outline(ctx, cvs, OverallPageNum) {
     }
 
     var minX, maxX, minY, maxY, midX, midY, COGX, COGY, n, isX, path = [],
-      q0, q1, q2, q3, rotate, tmp;
+      q0 = [], q1 = [], q2 = [], q3 = [], rotate, tmp;
 
     for (var i = 0; i < pathlist.length; i++) {
       minX = Math.round((pathlist[i].minX / scale) * 1000) / 1000;
@@ -649,60 +678,60 @@ async function outline(ctx, cvs, OverallPageNum) {
         pathlist[i].x0) / scale - midX) / width;
       COGY = ((pathlist[i].sums[pathlist[i].len].y / pathlist[i].len +
         pathlist[i].y0) / scale - midY) / height;
-      q0 = q1 = q2 = q3 = '';
+      q0.length = q1.length = q2.length = q3.length = 0;
       if ((maxX - minX) > (maxY - minY)) {
         if (Math.abs(COGX) > Math.abs(COGY)) {
           if (COGX > 0) {      //rotate 0 degrees
             for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q0.push((pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[0][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q1.push((pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[1][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q2.push((pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[2][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q3.push((pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[3][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             rotate = 0;
           }
           else {      //rotate 180 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
+            for (var k = 0; k < pathlist[i].po[2].length; k++) {
+              q0.push((-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3)),
                 (-(pathlist[i].pt[pathlist[i].po[2][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
+                  scale - midY).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
+              q1.push((-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3)),
                 (-(pathlist[i].pt[pathlist[i].po[3][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
+                  scale - midY).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q2.push((-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3)),
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q3.push((-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3)),
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3)) + ' ');
             }
             rotate = 180;
             COGX = - COGX;
@@ -711,55 +740,55 @@ async function outline(ctx, cvs, OverallPageNum) {
         } else {
           if (COGY > 0) {      //rotate 0 degrees
             for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q0.push((pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[0][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q1.push((pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[1][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q2.push((pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[2][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
-                midX).toFixed(3) + ' ' +
+              q3.push((pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3),
                 (pathlist[i].pt[pathlist[i].po[3][k]].y /
-                  scale - midY).toFixed(3) + ' ';
+                  scale - midY).toFixed(3) + ' ');
             }
             rotate = 0;
           }
           else {      //rotate 180 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
+            for (var k = 0; k < pathlist[i].po[2].length; k++) {
+              q0.push((-(pathlist[i].pt[pathlist[i].po[2][k]].x / scale -
+                midX).toFixed(3)),
                 (-(pathlist[i].pt[pathlist[i].po[2][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
+                  scale - midY).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
-                midX).toFixed(3)) + ' ' +
+              q1.push((-(pathlist[i].pt[pathlist[i].po[3][k]].x / scale -
+                midX).toFixed(3)),
                 (-(pathlist[i].pt[pathlist[i].po[3][k]].y /
-                  scale - midY).toFixed(3)) + ' ';
+                  scale - midY).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q2.push((-(pathlist[i].pt[pathlist[i].po[0][k]].x / scale -
+                midX).toFixed(3)),
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].y /
+                  scale - midY).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q3.push((-(pathlist[i].pt[pathlist[i].po[1][k]].x / scale -
+                midX).toFixed(3)),
+                (-(pathlist[i].pt[pathlist[i].po[1][k]].y /
+                  scale - midY).toFixed(3)) + ' ');
             }
             rotate = 180;
             COGX = - COGX;
@@ -770,29 +799,29 @@ async function outline(ctx, cvs, OverallPageNum) {
       } else {
         if (Math.abs(COGX) > Math.abs(COGY)) {
           if (COGX < 0) {      //rotate 90 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+            for (var k = 0; k < pathlist[i].po[3].length; k++) {
+              q0.push((pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3),
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q1.push((pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+              q2.push((pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[1][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+              q3.push((pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[2][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
-                midY).toFixed(3) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             rotate = 90;
             tmp = - COGX;
@@ -800,29 +829,29 @@ async function outline(ctx, cvs, OverallPageNum) {
             COGY = tmp;
           }
           else {      //rotate -90 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
-                (pathlist[i].pt[pathlist[i].po[0][k]].x /
-                  scale - midX).toFixed(3) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+            for (var k = 0; k < pathlist[i].po[1].length; k++) {
+              q0.push((-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[1][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+              q1.push((-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[2][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+              q2.push((-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[3][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q3.push((-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3)),
+                (pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3) + ' ');
             }
             rotate = -90;
             tmp = COGX;
@@ -833,29 +862,29 @@ async function outline(ctx, cvs, OverallPageNum) {
 
         } else {
           if (COGY > 0) {      //rotate 90 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+            for (var k = 0; k < pathlist[i].po[3].length; k++) {
+              q0.push((pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3),
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q1.push((pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+              q2.push((pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[1][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
-                midY).toFixed(3) + ' ' +
+              q3.push((pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[2][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
-                midY).toFixed(3) + ' ' +
-                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
-                  scale - midX).toFixed(3)) + ' ';
+                  scale - midX).toFixed(3)) + ' ');
             }
             rotate = 90;
             tmp = - COGX;
@@ -863,29 +892,29 @@ async function outline(ctx, cvs, OverallPageNum) {
             COGY = tmp;
           }
           else {      //rotate -90 degrees
-            for (var k = 0; k < pathlist[i].po[0].length; k++) {
-              q0 += (-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
-                (pathlist[i].pt[pathlist[i].po[0][k]].x /
-                  scale - midX).toFixed(3) + ' ';
-            }
-            for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q1 += (-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+            for (var k = 0; k < pathlist[i].po[1].length; k++) {
+              q0.push((-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[1][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q2 += (-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+              q1.push((-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[2][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q3 += (-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
-                midY).toFixed(3)) + ' ' +
+              q2.push((-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[3][k]].x /
-                  scale - midX).toFixed(3) + ' ';
+                  scale - midX).toFixed(3) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q3.push((-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3)),
+                (pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3) + ' ');
             }
             rotate = -90;
             tmp = COGX;
@@ -896,7 +925,8 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
 
       path = [Math.round(pathlist[i].area / scale / scale),    // 0
-      [q0, q1, q2, q3],     // 1
+      //  [q0,q1,q2,'0 0 '],
+      [q0.slice(), q1.slice(), q2.slice(), q3.slice()],     // 1
         rotate,     // 2
         width,     // 3
         height,     // 4
@@ -904,7 +934,16 @@ async function outline(ctx, cvs, OverallPageNum) {
         midY,     // 6
         OverallPageNum,     // 7
       paths.length,     // 8
-      Math.abs(COGY) / Math.abs(COGX),     // 9
+      (q0.length/2 > 89 ? 9 : ~~(q0.length/20))*10000000 +
+      (q1.length/2 > 89 ? 9 : ~~(q1.length/20))*1000000 +
+      (q2.length/2 > 89 ? 9 : ~~(q2.length/20))*100000 +
+      (q3.length/2 > 89 ? 9 : ~~(q3.length/20))*10000 +
+      (q0.length/2 % 10)*1000 +
+      (q1.length/2 % 10)*100 +
+      (q2.length/2 % 10)*10 +
+      (q3.length/2 % 10),
+
+        //  Math.abs(COGY) / Math.abs(COGX),     // 9
         COGX,     // 10
         COGY]     // 11
       paths.push(path);
@@ -920,12 +959,12 @@ function sort(head) {
   table.insertAdjacentHTML('beforeend', '<div class="row">\
     <div class="col"></div><div class="col">Description</div>\
     <div class="col">Symbol</div><div class="col">Qty</div></div>');
-  var threshold = 0;
+  var threshold = 30;
   paths.sort(function (a, b) {
-    if (a[0] < b[0]) return 1;
-    if (a[0] > b[0]) return -1;
     if (a[9] < b[9]) return 1;
     if (a[9] > b[9]) return -1;
+    if (a[0] < b[0]) return 1;
+    if (a[0] > b[0]) return -1;
     return 0;
   });
   var newSVG = [], refs = [];
@@ -940,24 +979,24 @@ function sort(head) {
     '" y="' + paths[0][6] + '" transform="rotate(' + paths[0][2] + ',' +
     paths[0][5] + ',' + paths[0][6] + ')"/>';
   var quantity = 1, differences, size, list = "",
-    lookBack = paths[0][1][0].split(/[\s,]+/) + paths[0][1][1].split(/[\s,]+/)
-      + paths[0][1][2].split(/[\s,]+/) + paths[0][1][3].split(/[\s,]+/);
+    lookBack = [], next = [];
+    lookBack.length = 0;
+    lookBack.push(paths[0][1][0].slice(), paths[0][1][1].slice(), paths[0][1][2].slice(), paths[0][1][3].slice());
   for (var l = 1; l < paths.length; l++) {
-    var next = paths[l][1][0].split(/[\s,]+/) + paths[l][1][1].split(/[\s,]+/)
-      + paths[l][1][2].split(/[\s,]+/) + paths[l][1][3].split(/[\s,]+/);
+    next.length = 0;
+    next.push(paths[l][1][0].slice(), paths[l][1][1].slice(), paths[l][1][2].slice(), paths[l][1][3].slice());
     differences = threshold + 1;
-    if (lookBack.length == next.length) {
+    if (next[0].length <= lookBack[0].length && next[1].length <= lookBack[1].length && next[2].length <= lookBack[2].length && next[3].length <= lookBack[3].length) {
       differences = 0;
-      for (var m = 1; m < next.length - 1; m++) {
-        if (lookBack[m] !== next[m]) {
-          if (isNaN(lookBack[m]) || isNaN(next[m])) {
-            differences += threshold + 1;
-            break
+      for(var m1 = 0; m1 <4; m1++){
+        for (var m = 0; m < next[m1].length - 1; m++) {
+          if (lookBack[m1][m] !== next[m1][m]) {
+            differences += Math.pow(lookBack[m1][m] - next[m1][m], 2);
           }
-          differences += Math.pow(lookBack[m] - next[m], 2);
+          if (differences > threshold) break;
         }
-        if (differences > threshold) break;
       }
+ 
     }
     if (differences > threshold) {
       size = Math.ceil(Math.max(paths[l - 1][3], paths[l - 1][4])) + 2;
@@ -970,7 +1009,7 @@ function sort(head) {
         + size + '"  version="1.1"><path id="' + paths[l - quantity][8] +
         '" d="M' + lookBack.toString().replace(/[,]/g, " ") + 'z"/></svg></div>\
         <div class="col">' + quantity + '</div></div>');
-      lookBack = next;
+      lookBack = next.slice();
       list = "";
       quantity = 1;
     } else {
