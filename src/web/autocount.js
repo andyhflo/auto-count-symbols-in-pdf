@@ -4,7 +4,7 @@ if (typeof window !== "undefined" && window["pdfjs-dist/build/pdf"]) {
 } else {
   pdfjsLib = require("../build/pdf.js");
 }
-const scale = 4;
+const scale = 8;
 var paths = [], svgDivs = [], OverallPageNumber = 0,
   sideBar = document.getElementById('counts'),
   dragbar = document.getElementById('dragbar'),
@@ -799,28 +799,28 @@ async function outline(ctx, cvs, OverallPageNum) {
       } else {
         if (Math.abs(COGX) > Math.abs(COGY)) {
           if (COGX < 0) {      //rotate 90 degrees
-            for (var k = 0; k < pathlist[i].po[3].length; k++) {
-              q0.push((pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
-                midY).toFixed(3),
-                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
-                  scale - midX).toFixed(3)) + ' ');
-            }
-            for (k = 0; k < pathlist[i].po[0].length; k++) {
-              q1.push((pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
-                midY).toFixed(3),
-                (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
-                  scale - midX).toFixed(3)) + ' ');
-            }
-            for (k = 0; k < pathlist[i].po[1].length; k++) {
-              q2.push((pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+            for (var k = 0; k < pathlist[i].po[1].length; k++) {
+              q0.push((pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
                 midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[1][k]].x /
                   scale - midX).toFixed(3)) + ' ');
             }
             for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q3.push((pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+              q1.push((pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
                 midY).toFixed(3),
                 (-(pathlist[i].pt[pathlist[i].po[2][k]].x /
+                  scale - midX).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[3].length; k++) {
+              q2.push((pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+                midY).toFixed(3),
+                (-(pathlist[i].pt[pathlist[i].po[3][k]].x /
+                  scale - midX).toFixed(3)) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[0].length; k++) {
+              q3.push((pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+                midY).toFixed(3),
+                (-(pathlist[i].pt[pathlist[i].po[0][k]].x /
                   scale - midX).toFixed(3)) + ' ');
             }
             rotate = 90;
@@ -829,28 +829,28 @@ async function outline(ctx, cvs, OverallPageNum) {
             COGY = tmp;
           }
           else {      //rotate -90 degrees
-            for (var k = 0; k < pathlist[i].po[1].length; k++) {
-              q0.push((-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
-                midY).toFixed(3)),
-                (pathlist[i].pt[pathlist[i].po[1][k]].x /
-                  scale - midX).toFixed(3) + ' ');
-            }
-            for (k = 0; k < pathlist[i].po[2].length; k++) {
-              q1.push((-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
-                midY).toFixed(3)),
-                (pathlist[i].pt[pathlist[i].po[2][k]].x /
-                  scale - midX).toFixed(3) + ' ');
-            }
-            for (k = 0; k < pathlist[i].po[3].length; k++) {
-              q2.push((-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
+            for (var k = 0; k < pathlist[i].po[3].length; k++) {
+              q0.push((-(pathlist[i].pt[pathlist[i].po[3][k]].y / scale -
                 midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[3][k]].x /
                   scale - midX).toFixed(3) + ' ');
             }
             for (k = 0; k < pathlist[i].po[0].length; k++) {
-              q3.push((-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
+              q1.push((-(pathlist[i].pt[pathlist[i].po[0][k]].y / scale -
                 midY).toFixed(3)),
                 (pathlist[i].pt[pathlist[i].po[0][k]].x /
+                  scale - midX).toFixed(3) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[1].length; k++) {
+              q2.push((-(pathlist[i].pt[pathlist[i].po[1][k]].y / scale -
+                midY).toFixed(3)),
+                (pathlist[i].pt[pathlist[i].po[1][k]].x /
+                  scale - midX).toFixed(3) + ' ');
+            }
+            for (k = 0; k < pathlist[i].po[2].length; k++) {
+              q3.push((-(pathlist[i].pt[pathlist[i].po[2][k]].y / scale -
+                midY).toFixed(3)),
+                (pathlist[i].pt[pathlist[i].po[2][k]].x /
                   scale - midX).toFixed(3) + ' ');
             }
             rotate = -90;
@@ -925,7 +925,7 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
 
       path = [Math.round(pathlist[i].area / scale / scale),    // 0
-      //  [q0,q1,q2,'0 0 '],
+ //       [q0.slice(),'0 0 ','0 0 ', '0 0 '],
       [q0.slice(), q1.slice(), q2.slice(), q3.slice()],     // 1
         rotate,     // 2
         width,     // 3
@@ -934,18 +934,12 @@ async function outline(ctx, cvs, OverallPageNum) {
         midY,     // 6
         OverallPageNum,     // 7
       paths.length,     // 8
-      (q0.length/2 > 89 ? 9 : ~~(q0.length/20))*10000000 +
-      (q1.length/2 > 89 ? 9 : ~~(q1.length/20))*1000000 +
-      (q2.length/2 > 89 ? 9 : ~~(q2.length/20))*100000 +
-      (q3.length/2 > 89 ? 9 : ~~(q3.length/20))*10000 +
-      (q0.length/2 % 10)*1000 +
-      (q1.length/2 % 10)*100 +
-      (q2.length/2 % 10)*10 +
-      (q3.length/2 % 10),
+      q0.length / 2,    //9
+      q1.length / 2,   //10
+      q2.length / 2,   //11
+      q3.length / 2    //12
 
-        //  Math.abs(COGY) / Math.abs(COGX),     // 9
-        COGX,     // 10
-        COGY]     // 11
+      ]
       paths.push(path);
     }
     resolve();
@@ -961,11 +955,575 @@ function sort(head) {
     <div class="col">Symbol</div><div class="col">Qty</div></div>');
   var threshold = 30;
   paths.sort(function (a, b) {
-    if (a[9] < b[9]) return 1;
-    if (a[9] > b[9]) return -1;
-    if (a[0] < b[0]) return 1;
-    if (a[0] > b[0]) return -1;
-    return 0;
+    if (a[12] < b[12] - 1) {
+      if (a[9] < b[9] - 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        }
+      } else if (a[9] > b[9] + 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        }
+      } else {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        }
+      }
+    
+    } else if (a[12] > b[12] + 1) {
+      if (a[9] < b[9] - 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+         } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        }
+      } else if (a[9] > b[9] + 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        }
+      } else {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        }
+      }
+    
+    } else {
+      if (a[9] < b[9] - 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        }
+      } else if (a[9] > b[9] + 1) {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        }
+      } else {
+        if (a[10] < b[10] - 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          }
+        } else if (a[10] > b[10] + 1) {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          }
+        } else {
+          if (a[11] < b[11] - 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return 1;
+          } else if (a[11] > b[11] + 1) {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else return -1;
+          } else {
+            if (a[0] < b[0] - 1) {
+              return 1;
+            } else if (a[0] > b[0] + 1) {
+              return -1;
+            } else {
+              return 0;
+            }
+          }
+        }
+      }
+    }
   });
   var newSVG = [], refs = [];
   for (let p = 0; p < OverallPageNumber; p++) {
@@ -980,23 +1538,23 @@ function sort(head) {
     paths[0][5] + ',' + paths[0][6] + ')"/>';
   var quantity = 1, differences, size, list = "",
     lookBack = [], next = [];
-    lookBack.length = 0;
-    lookBack.push(paths[0][1][0].slice(), paths[0][1][1].slice(), paths[0][1][2].slice(), paths[0][1][3].slice());
+  lookBack.length = 0;
+  lookBack.push(paths[0][1][0].slice(), paths[0][1][1].slice(), paths[0][1][2].slice(), paths[0][1][3].slice());
   for (var l = 1; l < paths.length; l++) {
     next.length = 0;
     next.push(paths[l][1][0].slice(), paths[l][1][1].slice(), paths[l][1][2].slice(), paths[l][1][3].slice());
     differences = threshold + 1;
-    if (next[0].length <= lookBack[0].length && next[1].length <= lookBack[1].length && next[2].length <= lookBack[2].length && next[3].length <= lookBack[3].length) {
+    if (next[0].length <= lookBack[0].length +3 && next[1].length <= lookBack[1].length +3 && next[2].length <= lookBack[2].length +3 && next[3].length <= lookBack[3].length +3 ) {
       differences = 0;
-      for(var m1 = 0; m1 <4; m1++){
-        for (var m = 0; m < next[m1].length - 1; m++) {
+      for (var m1 = 0; m1 < 4; m1++) {
+        for (var m = 0; m < next[m1].length - 2; m++) {
           if (lookBack[m1][m] !== next[m1][m]) {
             differences += Math.pow(lookBack[m1][m] - next[m1][m], 2);
           }
           if (differences > threshold) break;
         }
       }
- 
+
     }
     if (differences > threshold) {
       size = Math.ceil(Math.max(paths[l - 1][3], paths[l - 1][4])) + 2;
