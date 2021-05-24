@@ -11,7 +11,6 @@ var paths = [], svgDivs = [], OverallPageNumber = 0,
   table = document.getElementById('table'),
   canvasdiv = document.getElementById('drawings'),
   dropArea = document.getElementById("drop-area");
-
 dragbar.addEventListener("mousedown", (e) => {
   e.preventDefault();
   window.addEventListener("mousemove", resize);
@@ -25,7 +24,6 @@ dragbar.addEventListener("mousedown", (e) => {
     window.removeEventListener("mousemove", resize);
   }
 });
-
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
   dropArea.addEventListener(eventName, preventDefaults, false);
   document.body.addEventListener(eventName, preventDefaults, false);
@@ -35,7 +33,6 @@ function preventDefaults(e) {
   e.preventDefault();
   e.stopPropagation();
 }
-
 async function handleDrop(e) {
   console.time('Execution Time');
   files = [...e.dataTransfer.files];
@@ -88,7 +85,6 @@ async function handleDrop(e) {
                 }.bind({ OPN: OverallPageNumber, ctx: context, cvs: canvas }));
                 OverallPageNumber++;
               }.bind(OverallPageNumber));
-
             }
           }, function (reason) {      // PDF loading error
             console.error(reason);
@@ -103,18 +99,15 @@ async function handleDrop(e) {
     }
   }
 }
-
 async function outline(ctx, cvs, OverallPageNum) {
   return new Promise((resolve, reject) => {
     function Point(x, y) {
       this.x = x;
       this.y = y;
     }
-
     Point.prototype.copy = function () {
       return new Point(this.x, this.y);
     };
-
     function Bitmap(w, h) {
       this.w = w;
       this.h = h;
@@ -122,19 +115,16 @@ async function outline(ctx, cvs, OverallPageNum) {
       this.arraybuffer = new ArrayBuffer(this.size);
       this.data = new Int8Array(this.arraybuffer);
     }
-
     Bitmap.prototype.at = function (x, y) {
       return (x >= 0 && x < this.w && y >= 0 && y < this.h) &&
         this.data[this.w * y + x] === 1;
     };
-
     Bitmap.prototype.index = function (i) {
       var point = new Point();
       point.y = Math.floor(i / this.w);
       point.x = i - point.y * this.w;
       return point;
     };
-
     Bitmap.prototype.flip = function (x, y) {
       if (this.at(x, y)) {
         this.data[this.w * y + x] = 0;
@@ -142,7 +132,6 @@ async function outline(ctx, cvs, OverallPageNum) {
         this.data[this.w * y + x] = 1;
       }
     };
-
     Bitmap.prototype.copy = function () {
       var bm = new Bitmap(this.w, this.h), i;
       for (i = 0; i < this.size; i++) {
@@ -150,7 +139,6 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
       return bm;
     };
-
     function Path() {
       this.area = 0;
       this.len = 0;
@@ -165,14 +153,12 @@ async function outline(ctx, cvs, OverallPageNum) {
       this.firstMaxX = -1;
       this.firstMaxY = -1;
     }
-
     var bm = null,
       pathlist = [],
       info = {
         turnpolicy: "minority",
         turdsize: 2
       };
-
     bm = new Bitmap(cvs.width, cvs.height);
     var imgdataobj = ctx.getImageData(0, 0, bm.w, bm.h),
       l = imgdataobj.data.length, i, j, color;
@@ -184,7 +170,6 @@ async function outline(ctx, cvs, OverallPageNum) {
     // bmToPathlist
     var bm1 = bm.copy(),
       currentPoint = new Point(0, 0), path;
-
     function findNext(point) {
       var i = bm1.w * point.y + point.x;
       while (i < bm1.size && bm1.data[i] !== 1) {
@@ -192,7 +177,6 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
       return i < bm1.size && bm1.index(i);
     }
-
     function majority(x, y) {
       var i, a, ct;
       for (i = 2; i < 5; i++) {
@@ -211,13 +195,11 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
       return 0;
     }
-
     function findPath(point) {
       var path = new Path(),
         x = point.x, y = point.y,
         dirx = 0, diry = 1, tmp;
       path.sign = bm.at(point.x, point.y) ? "+" : "-";
-
       while (1) {
         path.pt.push(new Point(x, y));
         if (x > path.maxX) {
@@ -233,7 +215,6 @@ async function outline(ctx, cvs, OverallPageNum) {
           path.firstMaxY = path.len;
         }
         if (y < path.minY) path.minY = y;
-
         path.len++;
         x += dirx;
         y += diry;
@@ -273,7 +254,6 @@ async function outline(ctx, cvs, OverallPageNum) {
       }
       return path;
     }
-
     function xorPath(path) {
       var y1 = path.pt[0].y,
         len = path.len,
@@ -291,7 +271,6 @@ async function outline(ctx, cvs, OverallPageNum) {
         }
       }
     }
-
     while (currentPoint = findNext(currentPoint)) {
       path = findPath(currentPoint);
       xorPath(path);
@@ -316,15 +295,12 @@ async function outline(ctx, cvs, OverallPageNum) {
       this.x = x;
       this.y = y;
     }
-
     function mod(a, n) {
       return a >= n ? a % n : a >= 0 ? a : n - 1 - (-1 - a) % n;
     }
-
     function xprod(p1, p2) {
       return p1.x * p2.y - p1.y * p2.x;
     }
-
     function cyclic(a, b, c) {
       if (a <= c) {
         return (a <= b && b < c);
@@ -332,11 +308,9 @@ async function outline(ctx, cvs, OverallPageNum) {
         return (a <= b || b < c);
       }
     }
-
     function sign(i) {
       return i > 0 ? 1 : i < 0 ? -1 : 0;
     }
-
     function calcSums(path) {
       var i, x, y;
       path.x0 = path.pt[0].x;
@@ -350,20 +324,17 @@ async function outline(ctx, cvs, OverallPageNum) {
         s.push(new Sum(s[i].x + x, s[i].y + y));
       }
     }
-
     function calcLon(path) {
       var n = path.len, pt = path.pt, dir,
         pivk = new Array(n),
         nc = new Array(n),
         ct = new Array(4);
       path.lon = new Array(n);
-
       var constraint = [new Point(), new Point()],
         cur = new Point(),
         off = new Point(),
         dk = new Point(),
         foundk;
-
       var i, j, k1, a, b, c, d, k = 0;
       for (i = n - 1; i >= 0; i--) {
         if (pt[i].x != pt[k].x && pt[i].y != pt[k].y) {
@@ -371,18 +342,15 @@ async function outline(ctx, cvs, OverallPageNum) {
         }
         nc[i] = k;
       }
-
       for (i = n - 1; i >= 0; i--) {
         ct[0] = ct[1] = ct[2] = ct[3] = 0;
         dir = (3 + 3 * (pt[mod(i + 1, n)].x - pt[i].x) +
           (pt[mod(i + 1, n)].y - pt[i].y)) / 2;
         ct[dir]++;
-
         constraint[0].x = 0;
         constraint[0].y = 0;
         constraint[1].x = 0;
         constraint[1].y = 0;
-
         k = nc[i];
         k1 = i;
         while (1) {
@@ -390,23 +358,18 @@ async function outline(ctx, cvs, OverallPageNum) {
           dir = (3 + 3 * sign(pt[k].x - pt[k1].x) +
             sign(pt[k].y - pt[k1].y)) / 2;
           ct[dir]++;
-
           if (ct[0] && ct[1] && ct[2] || ct[0] && ct[1] && ct[3]
             || ct[0] && ct[2] && ct[3] || ct[1] && ct[2] && ct[3]) {
             pivk[i] = k1;
             foundk = 1;
             break;
           }
-
           cur.x = pt[k].x - pt[i].x;
           cur.y = pt[k].y - pt[i].y;
-
           if (xprod(constraint[0], cur) < 0 || xprod(constraint[1], cur) > 0) {
             break;
           }
-
           if (Math.abs(cur.x) <= 1 && Math.abs(cur.y) <= 1) {
-
           } else {
             off.x = cur.x + ((cur.y >= 0 && (cur.y > 0 || cur.x < 0)) ? 1 : -1);
             off.y = cur.y + ((cur.x <= 0 && (cur.x < 0 || cur.y < 0)) ? 1 : -1);
@@ -459,7 +422,6 @@ async function outline(ctx, cvs, OverallPageNum) {
         path.lon[i] = j;
       }
     }
-
     function bestPolygon(path) {
       var i, j0, j1, j2, j3, n = path.len, startOver = false;
       if (path.sign === "-") {
@@ -494,7 +456,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (startOver != false && path.lon[i] >= path.firstMinY) break;
           }
         }
-
         path.po[1][0] = path.firstMinY;
         i = path.lon.indexOf(path.lon[path.firstMinY]) - 1;
         if (i == -1) {
@@ -510,7 +471,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (path.lon[i] >= path.firstMaxX) break;
           }
         }
-
         path.po[2][0] = path.firstMaxX;
         i = path.lon.indexOf(path.lon[path.firstMaxX]) - 1;
         if (path.lon[i] < path.firstMaxY) {
@@ -521,7 +481,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (path.lon[i] >= path.firstMaxY) break;
           }
         }
-
         startOver = false;
         path.po[3][0] = path.firstMaxY;
         i = path.lon.indexOf(path.lon[path.firstMaxY]) - 1;
@@ -587,7 +546,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (startOver != false && path.lon[i] >= path.firstMinX) break;
           }
         }
-
         path.po[1][0] = path.firstMinX;
         i = path.lon.indexOf(path.lon[path.firstMinX]) - 1;
         if (i == -1) {
@@ -603,7 +561,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (path.lon[i] >= path.firstMaxY) break;
           }
         }
-
         path.po[2][0] = path.firstMaxY;
         i = path.lon.indexOf(path.lon[path.firstMaxY]) - 1;
         if (path.lon[i] < path.firstMaxX) {
@@ -614,7 +571,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             if (path.lon[i] >= path.firstMaxX) break;
           }
         }
-
         startOver = false;
         path.po[3][0] = path.firstMaxX;
         i = path.lon.indexOf(path.lon[path.firstMaxX]) - 1
@@ -653,7 +609,6 @@ async function outline(ctx, cvs, OverallPageNum) {
       if (path.m > path.len) console.log('j0: ' + j0 + ', j1: ' + j1 + ', j2: '
         + j2 + ', j3: ' + j3 + ', sign: ' + path.sign);
     }
-
     for (var i = 0; i < pathlist.length; i++) {
       var path = pathlist[i];
       // console.log('pathlist index: ' + i)
@@ -661,10 +616,8 @@ async function outline(ctx, cvs, OverallPageNum) {
       calcLon(path);
       bestPolygon(path);
     }
-
     var minX, maxX, minY, maxY, midX, midY, COGX, COGY, n, isX, path = [],
       q0 = [], q1 = [], q2 = [], q3 = [], rotate, tmp;
-
     for (var i = 0; i < pathlist.length; i++) {
       minX = Math.round((pathlist[i].minX / scale) * 1000) / 1000;
       maxX = Math.round((pathlist[i].maxX / scale) * 1000) / 1000;
@@ -795,7 +748,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             COGY = - COGY;
           }
         }
-
       } else {
         if (Math.abs(COGX) > Math.abs(COGY)) {
           if (COGX < 0) {      //rotate 90 degrees
@@ -858,8 +810,6 @@ async function outline(ctx, cvs, OverallPageNum) {
             COGX = - COGY;
             COGY = tmp;
           }
-
-
         } else {
           if (COGY > 0) {      //rotate 90 degrees
             for (var k = 0; k < pathlist[i].po[3].length; k++) {
@@ -923,9 +873,7 @@ async function outline(ctx, cvs, OverallPageNum) {
           }
         }
       }
-
       path = [Math.round(pathlist[i].area / scale / scale),    // 0
- //       [q0.slice(),'0 0 ','0 0 ', '0 0 '],
       [q0.slice(), q1.slice(), q2.slice(), q3.slice()],     // 1
         rotate,     // 2
         width,     // 3
@@ -938,14 +886,12 @@ async function outline(ctx, cvs, OverallPageNum) {
       q1.length / 2,   //10
       q2.length / 2,   //11
       q3.length / 2    //12
-
       ]
       paths.push(path);
     }
     resolve();
   });
 }
-
 function sort(head) {
   while (table.firstChild) {
     table.removeChild(table.firstChild);
@@ -1143,7 +1089,6 @@ function sort(head) {
           }
         }
       }
-    
     } else if (a[12] > b[12] + 1) {
       if (a[9] < b[9] - 1) {
         if (a[10] < b[10] - 1) {
@@ -1186,7 +1131,7 @@ function sort(head) {
               return -1;
             } else return -1;
           }
-         } else {
+        } else {
           if (a[11] < b[11] - 1) {
             if (a[0] < b[0] - 1) {
               return 1;
@@ -1332,7 +1277,6 @@ function sort(head) {
           }
         }
       }
-    
     } else {
       if (a[9] < b[9] - 1) {
         if (a[10] < b[10] - 1) {
@@ -1539,12 +1483,17 @@ function sort(head) {
   var quantity = 1, differences, size, list = "",
     lookBack = [], next = [];
   lookBack.length = 0;
-  lookBack.push(paths[0][1][0].slice(), paths[0][1][1].slice(), paths[0][1][2].slice(), paths[0][1][3].slice());
+  lookBack.push(paths[0][1][0].slice(), paths[0][1][1].slice(),
+    paths[0][1][2].slice(), paths[0][1][3].slice());
   for (var l = 1; l < paths.length; l++) {
     next.length = 0;
-    next.push(paths[l][1][0].slice(), paths[l][1][1].slice(), paths[l][1][2].slice(), paths[l][1][3].slice());
+    next.push(paths[l][1][0].slice(), paths[l][1][1].slice(),
+      paths[l][1][2].slice(), paths[l][1][3].slice());
     differences = threshold + 1;
-    if (next[0].length <= lookBack[0].length +3 && next[1].length <= lookBack[1].length +3 && next[2].length <= lookBack[2].length +3 && next[3].length <= lookBack[3].length +3 ) {
+    if (next[0].length <= lookBack[0].length + 3
+      && next[1].length <= lookBack[1].length + 3
+      && next[2].length <= lookBack[2].length + 3
+      && next[3].length <= lookBack[3].length + 3) {
       differences = 0;
       for (var m1 = 0; m1 < 4; m1++) {
         for (var m = 0; m < next[m1].length - 2; m++) {
@@ -1554,7 +1503,6 @@ function sort(head) {
           if (differences > threshold) break;
         }
       }
-
     }
     if (differences > threshold) {
       size = Math.ceil(Math.max(paths[l - 1][3], paths[l - 1][4])) + 2;

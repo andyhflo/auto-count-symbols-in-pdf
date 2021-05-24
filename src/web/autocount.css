@@ -1,14 +1,7 @@
-html,
-body {
+html, body, #drop-area {
     height: 100%;
     margin: 0;
 }
-
-#drop-area {
-    height: 100%;
-    margin: 0;
-}
-
 #counts {
     position: fixed;
     width: 0px;
@@ -21,74 +14,58 @@ body {
     z-index: 2;
     opacity: .8;
 }
-
 #drawings {
     position: absolute;
-z-index: 1;
-
+    z-index: 1;
 }
-
 .page {
     outline: 1px dotted black;
     position: relative;
     margin: 0 auto;
 }
-
 canvas {
     position: absolute;
     top: 0;
     left: 0;
     opacity: .8;
 }
-
 .svgDiv {
     position: absolute;
     top: 0;
     left: 0;
     opacity: .8;
     margin: 0;
-    opacity: 1;
 }
-
 use {
     stroke-opacity: 1;
     fill-opacity: 0;
     fill: white;
     stroke-width: 0;
-
   }
-
 use:hover {
     fill-opacity: 0;
     fill: white;
     stroke-width: 3;
-
   }
-
-  path {
+path {
     stroke: blue;
     fill: white;
   }
-
 path:hover {
     stroke: red;
     stroke-opacity: 1;
     fill: white;
     stroke-width: 3;
-
   }
-  
 #dragbar {
     background-color: black;
     height: 100%;
     position: fixed;
     top: 0;
-    height: 100%;
     width: 5px;
     cursor: col-resize;
     opacity: .3;
 }
-
 #table {
     display: inline-table;
     border-collapse: collapse;
@@ -96,19 +73,16 @@ path:hover {
     overflow: auto;
     direction: ltr;
 }
-
 .row {
     display: table-row;
     border-bottom: 1px solid blue;
 }
-
 .col {
     display: table-cell;
     text-align: center;
     padding: .2vw;
     font-size: min(max(5px, 1.25vw), 24px);
 }
-
 input[type=text] {
     font-size: min(max(4px, 1vw), 20px);
 }
